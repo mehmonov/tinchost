@@ -1,23 +1,2 @@
 # TincHost Cron Jobs
-# Bu faylni /etc/cron.d/tinchost ga nusxalang
 
-# Monitoring har 5 daqiqada
-5 * * * * root /home/husniddin//tinchost/scripts/monitor.sh >/dev/null 2>&1
-
-# Health check har soatda
-0 * * * * root /home/husniddin/tinchost/scripts/health_check.sh --report >/dev/null 2>&1
-
-# Log rotation tekshiruvi kunlik
-0 2 * * * root /usr/sbin/logrotate /etc/logrotate.d/tinchost >/dev/null 2>&1
-
-# Temporary fayllar tozalash kunlik
-0 4 * * * root find /tmp -name "tinchost_*" -mtime +1 -delete >/dev/null 2>&1
-
-# Nginx log fayllar tozalash haftalik
-0 5 * * 0 root find /var/log/nginx -name "*.log.*" -mtime +30 -delete >/dev/null 2>&1
-
-# System update check haftalik (dushanba kuni soat 6:00 da)
-0 6 * * 1 root apt list --upgradable 2>/dev/null | grep -v "Listing..." | wc -l > /var/log/tinchost/updates_available.txt
-
-# Cloudflare tunnel connectivity test har 15 daqiqada
-*/15 * * * * root systemctl is-active --quiet tinchost-cloudflared || systemctl restart tinchost-cloudflared >/dev/null 2>&1
