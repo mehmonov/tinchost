@@ -9,7 +9,7 @@ __pycache__/
 # Distribution / packaging 
 systemd/
 scripts/
-crontab/
+config/
 .Python
 build/
 develop-eggs/
