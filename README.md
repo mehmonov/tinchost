@@ -1,5 +1,10 @@
 # TincHost - Statik saytlarni bir zumda joylashtirish platformasi
 
+
+<img src="tinchost.jpg">
+
+
+
 TincHost - bu sizning HTML, CSS va JavaScript loyihalaringizni bir necha soniyada internetga chiqarish uchun yaratilgan oddiy va tezkor platforma. Faylni yuklang, havola oling va saytingiz tayyor!
 
 ## 🎯 Nima uchun TincHost?
