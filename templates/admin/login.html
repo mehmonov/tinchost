@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login - TincHost</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'dark-bg': '#0f0f0f',
+                        'dark-card': '#1a1a1a',
+                        'dark-border': '#2a2a2a',
+                        'accent': '#007aff',
+                        'accent-hover': '#0056cc'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-dark-bg text-white min-h-screen flex items-center justify-center">
+    <div class="bg-dark-card p-8 rounded-lg shadow-lg max-w-md w-full mx-4">
+        <div class="text-center mb-8">
+            <h1 class="text-2xl font-bold mb-2">Admin Panel</h1>
+            <p class="text-gray-400">TincHost admin paneliga kirish</p>
+        </div>
+
+        {% if error %}
+        <div class="bg-red-600 text-white p-3 rounded-lg mb-6">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form method="post" action="/admin/login">
+            <div class="mb-6">
+                <label class="block text-sm font-medium mb-2">Foydalanuvchi nomi</label>
+                <input type="text" name="username" required
+                       class="w-full p-3 bg-dark-bg border border-dark-border rounded-lg focus:border-accent focus:outline-none">
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-sm font-medium mb-2">Parol</label>
+                <input type="password" name="password" required
+                       class="w-full p-3 bg-dark-bg border border-dark-border rounded-lg focus:border-accent focus:outline-none">
+            </div>
+
+            <button type="submit" 
+                    class="w-full bg-accent hover:bg-accent-hover text-white py-3 rounded-lg font-medium transition-colors">
+                Kirish
+            </button>
+        </form>
+
+        <div class="mt-6 text-center">
+            <a href="/" class="text-gray-400 hover:text-white text-sm">Bosh sahifaga qaytish</a>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}TincHost - Static Site Deployment{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'dark-bg': '#0f0f0f',
+                        'dark-card': '#1a1a1a',
+                        'dark-border': '#2a2a2a',
+                        'accent': '#007aff',
+                        'accent-hover': '#0056cc'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-dark-bg text-white min-h-screen">
+    <nav class="bg-dark-card border-b border-dark-border">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <h1 class="text-xl font-semibold">TincHost</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <a href="/" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Bosh sahifa</a>
+                    {% if user %}
+                        <a href="/dashboard" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">Dashboard</a>
+                       
+                        <form action="/auth/logout" method="post" class="inline">
+                            <button type="submit" class="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
+                                Chiqish
+                            </button>
+                        </form>
+                    {% else %}
+                        <a href="/auth/github" class="bg-accent hover:bg-accent-hover text-white px-4 py-2 rounded-md text-sm font-medium">GitHub bilan kirish</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="bg-dark-card border-t border-dark-border mt-auto">
+        <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
+            <p class="text-center text-gray-400 text-sm"><a href="https://t.me/mehmonov_husniddin">Xatolar yoki takliflar uchun yozish</a></p>
+        </div>
+    </footer>
+</body>
+</html>

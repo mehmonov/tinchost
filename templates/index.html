@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+    <!-- Hero Section -->
+    <div class="text-center mb-12">
+        <h1 class="text-4xl font-bold mb-4">Static saytlaringizni tezda deploy qiling</h1>
+        <p class="text-xl text-gray-300 mb-8">HTML, CSS va JavaScript loyihalaringizni ZIP fayl ko'rinishida yuklang va
+            bir necha soniyada subdomen oling</p>
+
+        <!-- Upload Area -->
+        <div class="bg-dark-card border-2 border-dashed border-dark-border rounded-lg p-8 mb-8">
+            <div class="text-center">
+                <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                    <path
+                        d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                <h3 class="text-lg font-medium mb-2">ZIP faylni yuklang</h3>
+                <p class="text-gray-400 mb-4">Yoki faylni bu yerga sudrab olib keling</p>
+
+                <form id="uploadForm" enctype="multipart/form-data">
+                    <input type="file" id="fileInput" name="file" accept=".zip" class="hidden">
+                    <button type="button" onclick="document.getElementById('fileInput').click()"
+                        class="bg-accent hover:bg-accent-hover text-white font-medium py-2 px-6 rounded-lg transition-colors">
+                        Fayl tanlash
+                    </button>
+                </form>
+
+                <p class="text-sm text-gray-500 mt-4">Maksimal fayl hajmi: 100MB</p>
+            </div>
+        </div>
+
+        <!-- Features -->
+        <div class="grid md:grid-cols-3 gap-8 mt-12">
+            <div class="bg-dark-card p-6 rounded-lg">
+                <div class="text-accent text-2xl mb-4">⚡</div>
+                <h3 class="text-lg font-semibold mb-2">Tezkor deploy</h3>
+                <p class="text-gray-400">Bir necha soniyada saytingiz tayyor bo'ladi</p>
+            </div>
+
+            <div class="bg-dark-card p-6 rounded-lg">
+                <div class="text-accent text-2xl mb-4">🌐</div>
+                <h3 class="text-lg font-semibold mb-2">Avtomatik subdomen</h3>
+                <p class="text-gray-400">Har bir loyiha uchun alohida subdomen</p>
+            </div>
+
+            <div class="bg-dark-card p-6 rounded-lg">
+                <div class="text-accent text-2xl mb-4">🔒</div>
+                <h3 class="text-lg font-semibold mb-2">Xavfsiz</h3>
+                <p class="text-gray-400">GitHub OAuth va xavfsizlik choralari</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // File upload handling
+    document.getElementById('fileInput').addEventListener('change', function (e) {
+        const file = e.target.files[0];
+        if (file) {
+            uploadFile(file);
+        }
+    });
+
+    // Drag and drop
+    const uploadArea = document.querySelector('.bg-dark-card');
+    uploadArea.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        uploadArea.classList.add('border-accent');
+    });
+
+    uploadArea.addEventListener('dragleave', function (e) {
+        e.preventDefault();
+        uploadArea.classList.remove('border-accent');
+    });
+
+    uploadArea.addEventListener('drop', function (e) {
+        e.preventDefault();
+        uploadArea.classList.remove('border-accent');
+
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            const file = files[0];
+            if (file.type === 'application/zip' || file.name.endsWith('.zip')) {
+                uploadFile(file);
+            } else {
+                showNotification('Faqat ZIP fayllar qabul qilinadi', 'error');
+            }
+        }
+    });
+
+    async function uploadFile(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        // Show loading state
+        showNotification('Fayl yuklanmoqda...', 'info');
+
+        try {
+            const response = await fetch('/upload/', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                showSuccessModal(data);
+            } else {
+                showNotification(data.detail || 'Xatolik yuz berdi', 'error');
+            }
+        } catch (error) {
+            showNotification('Xatolik yuz berdi', 'error');
+        }
+    }
+
+    function showNotification(message, type = 'info') {
+        // Remove existing notifications
+        const existing = document.querySelector('.notification');
+        if (existing) existing.remove();
+
+        const notification = document.createElement('div');
+        notification.className = `notification fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm ${type === 'success' ? 'bg-green-600' :
+            type === 'error' ? 'bg-red-600' : 'bg-blue-600'
+            } text-white`;
+        notification.textContent = message;
+
+        document.body.appendChild(notification);
+
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 5000);
+    }
+
+    function showSuccessModal(data) {
+        // Create modal HTML
+        const modalHTML = `
+        <div id="successModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+            <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4 text-center">
+                <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Muvaffaqiyatli yuklandi!</h3>
+                <p class="text-gray-600 mb-4">Sizning saytingiz tayyor va foydalanish uchun ochiq.</p>
+                
+                <div class="bg-gray-50 p-3 rounded-lg mb-6">
+                    <p class="text-sm text-gray-600 mb-1">Sayt manzili:</p>
+                    <a href="${data.url}" target="_blank" class="text-blue-600 hover:text-blue-800 font-medium break-all">
+                        ${data.url}
+                    </a>
+                </div>
+                
+                <div class="flex gap-3 justify-center">
+                    <a href="${data.url}" target="_blank" 
+                       class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium">
+                        Saytni ochish
+                    </a>
+                    <button onclick="closeSuccessModal()" 
+                            class="bg-gray-300 hover:bg-gray-400 text-gray-700 px-4 py-2 rounded-lg font-medium">
+                        Yopish
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+        // Add modal to page
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    }
+
+    function closeSuccessModal() {
+        const modal = document.getElementById('successModal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+</script>
+{% endblock %}

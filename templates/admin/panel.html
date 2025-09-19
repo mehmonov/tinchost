@@ -1,0 +1,881 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Panel - TincHost{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <!-- Header -->
+    <div class="flex justify-between items-center mb-8">
+        <h1 class="text-3xl font-bold">Admin Panel</h1>
+        <div class="flex items-center space-x-4">
+            <span class="text-gray-300">{{ user.username }} (Admin)</span>
+            <a href="/dashboard" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg">
+                Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="bg-dark-card p-6 rounded-lg">
+            <h3 class="text-lg font-semibold mb-2 text-blue-400">Server CPU</h3>
+            <p class="text-3xl font-bold" id="cpu-usage">-</p>
+            <p class="text-sm text-gray-400">CPU ishlatilishi</p>
+        </div>
+        <div class="bg-dark-card p-6 rounded-lg">
+            <h3 class="text-lg font-semibold mb-2 text-green-400">Xotira</h3>
+            <p class="text-3xl font-bold" id="memory-usage">-</p>
+            <p class="text-sm text-gray-400">RAM ishlatilishi</p>
+        </div>
+        <div class="bg-dark-card p-6 rounded-lg">
+            <h3 class="text-lg font-semibold mb-2 text-yellow-400">Disk</h3>
+            <p class="text-3xl font-bold" id="disk-usage">-</p>
+            <p class="text-sm text-gray-400">Disk ishlatilishi</p>
+        </div>
+        <div class="bg-dark-card p-6 rounded-lg">
+            <h3 class="text-lg font-semibold mb-2 text-purple-400">Saytlar</h3>
+            <p class="text-3xl font-bold" id="total-sites">-</p>
+            <p class="text-sm text-gray-400">Jami subdomenlar</p>
+        </div>
+    </div>
+
+    <!-- Detailed Statistics -->
+    <div class="grid lg:grid-cols-2 gap-6 mb-8">
+        <div class="bg-dark-card p-6 rounded-lg">
+            <h2 class="text-xl font-semibold mb-4">Foydalanuvchilar statistikasi</h2>
+            <div class="space-y-3">
+                <div class="flex justify-between">
+                    <span>Jami foydalanuvchilar:</span>
+                    <span class="font-semibold" id="total-users">-</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Adminlar:</span>
+                    <span class="font-semibold" id="admin-users">-</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Yangi (hafta):</span>
+                    <span class="font-semibold" id="new-users-week">-</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-dark-card p-6 rounded-lg">
+            <h2 class="text-xl font-semibold mb-4">Saytlar statistikasi</h2>
+            <div class="space-y-3">
+                <div class="flex justify-between">
+                    <span>Jami saytlar:</span>
+                    <span class="font-semibold" id="total-subdomains">-</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Jami hajm:</span>
+                    <span class="font-semibold" id="total-size">-</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Yangi saytlar (hafta):</span>
+                    <span class="font-semibold" id="new-sites-week">-</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Management Tabs -->
+    <div class="bg-dark-card rounded-lg">
+        <div class="border-b border-dark-border">
+            <nav class="flex space-x-8 px-6">
+                <button onclick="showTab('users')" id="users-tab" 
+                        class="py-4 px-1 border-b-2 border-transparent hover:border-gray-300 font-medium text-sm tab-button active">
+                    Foydalanuvchilar
+                </button>
+                <button onclick="showTab('subdomains')" id="subdomains-tab"
+                        class="py-4 px-1 border-b-2 border-transparent hover:border-gray-300 font-medium text-sm tab-button">
+                    Subdomenlar
+                </button>
+                <button onclick="showTab('system')" id="system-tab"
+                        class="py-4 px-1 border-b-2 border-transparent hover:border-gray-300 font-medium text-sm tab-button">
+                    Tizim ma'lumotlari
+                </button>
+                <button onclick="showTab('monitoring')" id="monitoring-tab"
+                        class="py-4 px-1 border-b-2 border-transparent hover:border-gray-300 font-medium text-sm tab-button">
+                    Monitoring
+                </button>
+                <button onclick="showTab('storage')" id="storage-tab"
+                        class="py-4 px-1 border-b-2 border-transparent hover:border-gray-300 font-medium text-sm tab-button">
+                    Saqlash tahlili
+                </button>
+            </nav>
+        </div>
+
+        <!-- Users Tab -->
+        <div id="users-content" class="p-6 tab-content">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Foydalanuvchilar boshqaruvi</h3>
+                <button onclick="refreshUsers()" class="bg-accent hover:bg-accent-hover text-white px-4 py-2 rounded-lg">
+                    Yangilash
+                </button>
+            </div>
+            <div id="users-list" class="space-y-4">
+                <div class="text-center py-8 text-gray-400">Ma'lumotlar yuklanmoqda...</div>
+            </div>
+        </div>
+
+        <!-- Subdomains Tab -->
+        <div id="subdomains-content" class="p-6 tab-content hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Subdomenlar boshqaruvi</h3>
+                <button onclick="refreshSubdomains()" class="bg-accent hover:bg-accent-hover text-white px-4 py-2 rounded-lg">
+                    Yangilash
+                </button>
+            </div>
+            <div id="subdomains-list" class="space-y-4">
+                <div class="text-center py-8 text-gray-400">Ma'lumotlar yuklanmoqda...</div>
+            </div>
+        </div>
+
+        <!-- System Tab -->
+        <div id="system-content" class="p-6 tab-content hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Tizim ma'lumotlari</h3>
+                <button onclick="refreshSystemInfo()" class="bg-accent hover:bg-accent-hover text-white px-4 py-2 rounded-lg">
+                    Yangilash
+                </button>
+            </div>
+            <div id="system-info" class="space-y-4">
+                <div class="text-center py-8 text-gray-400">Ma'lumotlar yuklanmoqda...</div>
+            </div>
+        </div>
+
+        <!-- Monitoring Tab -->
+        <div id="monitoring-content" class="p-6 tab-content hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Performance Monitoring</h3>
+                <button onclick="refreshMonitoring()" class="bg-accent hover:bg-accent-hover text-white px-4 py-2 rounded-lg">
+                    Yangilash
+                </button>
+            </div>
+            
+            <!-- Performance Metrics -->
+            <div id="performance-metrics" class="mb-6">
+                <div class="text-center py-8 text-gray-400">Ma'lumotlar yuklanmoqda...</div>
+            </div>
+            
+            <!-- Activity Chart -->
+            <div class="bg-dark-bg p-4 rounded-lg mb-6">
+                <h4 class="font-semibold mb-3">Faollik statistikasi (oxirgi 7 kun)</h4>
+                <div id="activity-chart" class="h-64">
+                    <div class="text-center py-8 text-gray-400">Ma'lumotlar yuklanmoqda...</div>
+                </div>
+            </div>
+            
+            <!-- Resource Usage -->
+            <div id="resource-usage" class="space-y-4">
+                <div class="text-center py-8 text-gray-400">Ma'lumotlar yuklanmoqda...</div>
+            </div>
+        </div>
+
+        <!-- Storage Analysis Tab -->
+        <div id="storage-content" class="p-6 tab-content hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Saqlash tahlili</h3>
+                <button onclick="refreshStorage()" class="bg-accent hover:bg-accent-hover text-white px-4 py-2 rounded-lg">
+                    Yangilash
+                </button>
+            </div>
+            <div id="storage-analysis" class="space-y-4">
+                <div class="text-center py-8 text-gray-400">Ma'lumotlar yuklanmoqda...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentTab = 'users';
+let users = [];
+let subdomains = [];
+
+// Tab management
+function showTab(tabName) {
+    // Hide all tabs
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.add('hidden');
+    });
+    
+    // Remove active class from all buttons
+    document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('active', 'border-accent', 'text-accent');
+        btn.classList.add('border-transparent');
+    });
+    
+    // Show selected tab
+    document.getElementById(tabName + '-content').classList.remove('hidden');
+    
+    // Add active class to selected button
+    const activeBtn = document.getElementById(tabName + '-tab');
+    activeBtn.classList.add('active', 'border-accent', 'text-accent');
+    activeBtn.classList.remove('border-transparent');
+    
+    currentTab = tabName;
+    
+    // Load data for the tab
+    if (tabName === 'users') {
+        loadUsers();
+    } else if (tabName === 'subdomains') {
+        loadSubdomains();
+    } else if (tabName === 'system') {
+        loadSystemInfo();
+    } else if (tabName === 'monitoring') {
+        loadMonitoring();
+    } else if (tabName === 'storage') {
+        loadStorageAnalysis();
+    }
+}
+
+// Load statistics
+async function loadStats() {
+    try {
+        const response = await fetch('/admin/stats');
+        const data = await response.json();
+        
+        if (data.success) {
+            const stats = data.stats;
+            
+            // System stats
+            document.getElementById('cpu-usage').textContent = stats.system.cpu_percent.toFixed(1) + '%';
+            document.getElementById('memory-usage').textContent = stats.system.memory_percent.toFixed(1) + '%';
+            document.getElementById('disk-usage').textContent = stats.system.disk_percent.toFixed(1) + '%';
+            
+            // User stats
+            document.getElementById('total-users').textContent = stats.users.total;
+            document.getElementById('admin-users').textContent = stats.users.admins;
+            document.getElementById('new-users-week').textContent = stats.users.recent;
+            
+            // Subdomain stats
+            document.getElementById('total-sites').textContent = stats.subdomains.total;
+            document.getElementById('total-subdomains').textContent = stats.subdomains.total;
+            document.getElementById('total-size').textContent = formatFileSize(stats.subdomains.total_size);
+            document.getElementById('new-sites-week').textContent = stats.subdomains.recent;
+        }
+    } catch (error) {
+        console.error('Error loading stats:', error);
+    }
+}
+
+// Load users
+async function loadUsers() {
+    try {
+        const response = await fetch('/admin/users');
+        const data = await response.json();
+        
+        if (data.success) {
+            users = data.users;
+            renderUsers();
+        }
+    } catch (error) {
+        console.error('Error loading users:', error);
+        document.getElementById('users-list').innerHTML = '<div class="text-center py-8 text-red-400">Xatolik yuz berdi</div>';
+    }
+}
+
+function renderUsers() {
+    const container = document.getElementById('users-list');
+    
+    if (users.length === 0) {
+        container.innerHTML = '<div class="text-center py-8 text-gray-400">Foydalanuvchilar topilmadi</div>';
+        return;
+    }
+    
+    container.innerHTML = users.map(user => `
+        <div class="bg-dark-bg p-4 rounded-lg flex justify-between items-center">
+            <div class="flex items-center space-x-4">
+                ${user.avatar_url ? `<img src="${user.avatar_url}" alt="${user.username}" class="w-10 h-10 rounded-full">` : '<div class="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center"><span class="text-sm font-semibold">${user.username.charAt(0).toUpperCase()}</span></div>'}
+                <div>
+                    <h4 class="font-semibold">${user.username}</h4>
+                    <p class="text-sm text-gray-400">${user.email || 'Email yo\'q'}</p>
+                    <p class="text-xs text-gray-500">${user.subdomain_count} sayt • ${user.is_admin ? 'Admin' : 'Foydalanuvchi'}</p>
+                </div>
+            </div>
+            <div class="flex space-x-2">
+                <button onclick="toggleAdmin(${user.id}, ${user.is_admin})" 
+                        class="${user.is_admin ? 'bg-orange-600 hover:bg-orange-700' : 'bg-green-600 hover:bg-green-700'} text-white px-3 py-1 rounded text-sm">
+                    ${user.is_admin ? 'Admin olib tashlash' : 'Admin qilish'}
+                </button>
+                <button onclick="deleteUser(${user.id}, '${user.username}')" 
+                        class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
+                    O'chirish
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Load subdomains
+async function loadSubdomains() {
+    try {
+        const response = await fetch('/admin/subdomains');
+        const data = await response.json();
+        
+        if (data.success) {
+            subdomains = data.subdomains;
+            renderSubdomains();
+        }
+    } catch (error) {
+        console.error('Error loading subdomains:', error);
+        document.getElementById('subdomains-list').innerHTML = '<div class="text-center py-8 text-red-400">Xatolik yuz berdi</div>';
+    }
+}
+
+function renderSubdomains() {
+    const container = document.getElementById('subdomains-list');
+    
+    if (subdomains.length === 0) {
+        container.innerHTML = '<div class="text-center py-8 text-gray-400">Subdomenlar topilmadi</div>';
+        return;
+    }
+    
+    container.innerHTML = subdomains.map(subdomain => `
+        <div class="bg-dark-bg p-4 rounded-lg flex justify-between items-center">
+            <div>
+                <h4 class="font-semibold">${subdomain.subdomain_name}</h4>
+                <p class="text-sm text-gray-400">${subdomain.url}</p>
+                <p class="text-xs text-gray-500">
+                    ${subdomain.user ? subdomain.user.username : 'Noma\'lum foydalanuvchi'} • 
+                    ${formatFileSize(subdomain.file_size)} • 
+                    ${subdomain.file_count} fayl
+                </p>
+            </div>
+            <div class="flex space-x-2">
+                <a href="${subdomain.url}" target="_blank" 
+                   class="bg-accent hover:bg-accent-hover text-white px-3 py-1 rounded text-sm">
+                    Ochish
+                </a>
+                <button onclick="deleteSubdomain(${subdomain.id}, '${subdomain.subdomain_name}')" 
+                        class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
+                    O'chirish
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Load system info
+async function loadSystemInfo() {
+    try {
+        const response = await fetch('/admin/system-info');
+        const data = await response.json();
+        
+        if (data.success) {
+            renderSystemInfo(data.system_info);
+        }
+    } catch (error) {
+        console.error('Error loading system info:', error);
+        document.getElementById('system-info').innerHTML = '<div class="text-center py-8 text-red-400">Xatolik yuz berdi</div>';
+    }
+}
+
+function renderSystemInfo(info) {
+    const container = document.getElementById('system-info');
+    
+    const uptimeDays = Math.floor(info.uptime_seconds / 86400);
+    const uptimeHours = Math.floor((info.uptime_seconds % 86400) / 3600);
+    
+    container.innerHTML = `
+        <div class="grid md:grid-cols-2 gap-6">
+            <div class="bg-dark-bg p-4 rounded-lg">
+                <h4 class="font-semibold mb-3">Tizim ma'lumotlari</h4>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span>Hostname:</span>
+                        <span class="font-mono">${info.hostname}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Platform:</span>
+                        <span class="font-mono">${info.platform}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Architecture:</span>
+                        <span class="font-mono">${info.architecture}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Uptime:</span>
+                        <span class="font-mono">${uptimeDays}d ${uptimeHours}h</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Processes:</span>
+                        <span class="font-mono">${info.process_count}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-dark-bg p-4 rounded-lg">
+                <h4 class="font-semibold mb-3">Tarmoq statistikasi</h4>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span>Yuborilgan:</span>
+                        <span class="font-mono">${formatFileSize(info.network.bytes_sent)}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Qabul qilingan:</span>
+                        <span class="font-mono">${formatFileSize(info.network.bytes_recv)}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Paketlar (yuborilgan):</span>
+                        <span class="font-mono">${info.network.packets_sent.toLocaleString()}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Paketlar (qabul):</span>
+                        <span class="font-mono">${info.network.packets_recv.toLocaleString()}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Action functions
+async function toggleAdmin(userId, isCurrentlyAdmin) {
+    const action = isCurrentlyAdmin ? 'olib tashlash' : 'qilish';
+    if (!confirm(`Foydalanuvchini admin ${action}ni xohlaysizmi?`)) return;
+    
+    try {
+        const response = await fetch(`/admin/user/${userId}/toggle-admin`, { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.success) {
+            loadUsers();
+            loadStats();
+        } else {
+            alert('Xatolik yuz berdi');
+        }
+    } catch (error) {
+        alert('Xatolik yuz berdi');
+    }
+}
+
+async function deleteUser(userId, username) {
+    if (!confirm(`${username} foydalanuvchisini o'chirishni xohlaysizmi? Bu barcha saytlarini ham o'chiradi.`)) return;
+    
+    try {
+        const response = await fetch(`/admin/user/${userId}`, { method: 'DELETE' });
+        const data = await response.json();
+        
+        if (data.success) {
+            loadUsers();
+            loadStats();
+        } else {
+            alert('Xatolik yuz berdi');
+        }
+    } catch (error) {
+        alert('Xatolik yuz berdi');
+    }
+}
+
+async function deleteSubdomain(subdomainId, subdomainName) {
+    if (!confirm(`${subdomainName} saytini o'chirishni xohlaysizmi?`)) return;
+    
+    try {
+        const response = await fetch(`/admin/subdomain/${subdomainId}`, { method: 'DELETE' });
+        const data = await response.json();
+        
+        if (data.success) {
+            loadSubdomains();
+            loadStats();
+        } else {
+            alert('Xatolik yuz berdi');
+        }
+    } catch (error) {
+        alert('Xatolik yuz berdi');
+    }
+}
+
+// Refresh functions
+function refreshUsers() {
+    loadUsers();
+}
+
+function refreshSubdomains() {
+    loadSubdomains();
+}
+
+function refreshSystemInfo() {
+    loadSystemInfo();
+}
+
+function refreshMonitoring() {
+    loadMonitoring();
+}
+
+function refreshStorage() {
+    loadStorageAnalysis();
+}
+
+// Load monitoring data
+async function loadMonitoring() {
+    try {
+        // Load performance metrics
+        const perfResponse = await fetch('/admin/performance-metrics');
+        const perfData = await perfResponse.json();
+        
+        if (perfData.success) {
+            renderPerformanceMetrics(perfData.performance_metrics);
+        }
+        
+        // Load activity data
+        const activityResponse = await fetch('/admin/activity?days=7');
+        const activityData = await activityResponse.json();
+        
+        if (activityData.success) {
+            renderActivityChart(activityData.activity);
+        }
+        
+        // Load resource usage
+        const resourceResponse = await fetch('/admin/resource-usage');
+        const resourceData = await resourceResponse.json();
+        
+        if (resourceData.success) {
+            renderResourceUsage(resourceData.resource_usage);
+        }
+        
+    } catch (error) {
+        console.error('Error loading monitoring data:', error);
+    }
+}
+
+function renderPerformanceMetrics(metrics) {
+    const container = document.getElementById('performance-metrics');
+    
+    const healthColor = {
+        'low': 'text-green-400',
+        'medium': 'text-yellow-400', 
+        'high': 'text-orange-400',
+        'critical': 'text-red-400'
+    };
+    
+    let recommendationsHtml = '';
+    if (metrics.recommendations.length > 0) {
+        recommendationsHtml = `
+            <div class="bg-dark-bg p-4 rounded-lg">
+                <h5 class="font-semibold mb-2">Tavsiyalar</h5>
+                <div class="space-y-2">
+                    ${metrics.recommendations.map(rec => `
+                        <div class="flex items-center space-x-2">
+                            <span class="w-2 h-2 rounded-full ${rec.type === 'error' ? 'bg-red-400' : rec.type === 'warning' ? 'bg-yellow-400' : 'bg-blue-400'}"></span>
+                            <span class="text-sm">${rec.message}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    container.innerHTML = `
+        <div class="grid md:grid-cols-2 gap-6">
+            <div class="bg-dark-bg p-4 rounded-lg">
+                <h4 class="font-semibold mb-3">Tizim salomatligi</h4>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span>Xotira bosimi:</span>
+                        <span class="${healthColor[metrics.system_health.memory_pressure]} font-semibold">${metrics.system_health.memory_pressure}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Disk bosimi:</span>
+                        <span class="${healthColor[metrics.system_health.disk_pressure]} font-semibold">${metrics.system_health.disk_pressure}</span>
+                    </div>
+                    ${metrics.system_health.load_average ? `
+                        <div class="flex justify-between">
+                            <span>Load Average:</span>
+                            <span class="font-mono">${metrics.system_health.load_average.map(l => l.toFixed(2)).join(', ')}</span>
+                        </div>
+                    ` : ''}
+                    <div class="flex justify-between">
+                        <span>Nginx:</span>
+                        <span class="${metrics.system_health.services.nginx ? 'text-green-400' : 'text-red-400'} font-semibold">
+                            ${metrics.system_health.services.nginx ? 'Ishlayapti' : 'Ishlamayapti'}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-dark-bg p-4 rounded-lg">
+                <h4 class="font-semibold mb-3">Aplikatsiya ko'rsatkichlari</h4>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span>Jami foydalanuvchilar:</span>
+                        <span class="font-semibold">${metrics.application_metrics.total_users}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Jami saytlar:</span>
+                        <span class="font-semibold">${metrics.application_metrics.total_subdomains}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>O'rtacha sayt hajmi:</span>
+                        <span class="font-semibold">${formatFileSize(metrics.application_metrics.average_subdomain_size)}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Jami saqlangan:</span>
+                        <span class="font-semibold">${formatFileSize(metrics.application_metrics.total_storage_used)}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        ${recommendationsHtml}
+    `;
+}
+
+function renderActivityChart(activity) {
+    const container = document.getElementById('activity-chart');
+    
+    // Simple bar chart representation
+    const maxUsers = Math.max(...activity.map(a => a.new_users));
+    const maxSites = Math.max(...activity.map(a => a.new_subdomains));
+    const maxValue = Math.max(maxUsers, maxSites, 1);
+    
+    container.innerHTML = `
+        <div class="flex items-end justify-between h-48 space-x-2">
+            ${activity.map(day => `
+                <div class="flex-1 flex flex-col items-center">
+                    <div class="flex flex-col items-center space-y-1 mb-2">
+                        <div class="bg-blue-500 rounded-t" style="height: ${(day.new_users / maxValue) * 120}px; width: 20px;" title="Yangi foydalanuvchilar: ${day.new_users}"></div>
+                        <div class="bg-green-500 rounded-t" style="height: ${(day.new_subdomains / maxValue) * 120}px; width: 20px;" title="Yangi saytlar: ${day.new_subdomains}"></div>
+                    </div>
+                    <span class="text-xs text-gray-400 transform rotate-45">${new Date(day.date).toLocaleDateString()}</span>
+                </div>
+            `).join('')}
+        </div>
+        <div class="flex justify-center space-x-4 mt-4 text-sm">
+            <div class="flex items-center space-x-2">
+                <div class="w-3 h-3 bg-blue-500 rounded"></div>
+                <span>Yangi foydalanuvchilar</span>
+            </div>
+            <div class="flex items-center space-x-2">
+                <div class="w-3 h-3 bg-green-500 rounded"></div>
+                <span>Yangi saytlar</span>
+            </div>
+        </div>
+    `;
+}
+
+function renderResourceUsage(usage) {
+    const container = document.getElementById('resource-usage');
+    
+    container.innerHTML = `
+        <div class="grid md:grid-cols-2 gap-6">
+            <div class="bg-dark-bg p-4 rounded-lg">
+                <h4 class="font-semibold mb-3">CPU va Xotira</h4>
+                <div class="space-y-3">
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span>CPU Cores:</span>
+                            <span>${usage.cpu.count}</span>
+                        </div>
+                        ${usage.cpu.frequency.current ? `
+                            <div class="flex justify-between text-sm mb-1">
+                                <span>CPU Frequency:</span>
+                                <span>${usage.cpu.frequency.current.toFixed(0)} MHz</span>
+                            </div>
+                        ` : ''}
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span>RAM:</span>
+                            <span>${formatFileSize(usage.memory.used)} / ${formatFileSize(usage.memory.total)}</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-2">
+                            <div class="bg-blue-500 h-2 rounded-full" style="width: ${usage.memory.percent}%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span>Swap:</span>
+                            <span>${formatFileSize(usage.memory.swap.used)} / ${formatFileSize(usage.memory.swap.total)}</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-2">
+                            <div class="bg-yellow-500 h-2 rounded-full" style="width: ${usage.memory.swap.percent}%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-dark-bg p-4 rounded-lg">
+                <h4 class="font-semibold mb-3">Disk va Tarmoq</h4>
+                <div class="space-y-3">
+                    <div>
+                        <div class="flex justify-between text-sm mb-1">
+                            <span>Disk:</span>
+                            <span>${formatFileSize(usage.disk.usage.used)} / ${formatFileSize(usage.disk.usage.total)}</span>
+                        </div>
+                        <div class="w-full bg-gray-700 rounded-full h-2">
+                            <div class="bg-green-500 h-2 rounded-full" style="width: ${usage.disk.usage.percent}%"></div>
+                        </div>
+                    </div>
+                    <div class="text-sm space-y-1">
+                        <div class="flex justify-between">
+                            <span>Tarmoq (yuborilgan):</span>
+                            <span>${formatFileSize(usage.network.bytes_sent)}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Tarmoq (qabul):</span>
+                            <span>${formatFileSize(usage.network.bytes_recv)}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        ${usage.processes.length > 0 ? `
+            <div class="bg-dark-bg p-4 rounded-lg">
+                <h4 class="font-semibold mb-3">Top Processes</h4>
+                <div class="space-y-2">
+                    ${usage.processes.slice(0, 5).map(proc => `
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="font-mono">${proc.name} (${proc.pid})</span>
+                            <div class="flex space-x-4">
+                                <span>CPU: ${proc.cpu_percent.toFixed(1)}%</span>
+                                <span>RAM: ${proc.memory_percent.toFixed(1)}%</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        ` : ''}
+    `;
+}
+
+// Load storage analysis
+async function loadStorageAnalysis() {
+    try {
+        const response = await fetch('/admin/storage-analysis');
+        const data = await response.json();
+        
+        if (data.success) {
+            renderStorageAnalysis(data.storage_analysis);
+        }
+    } catch (error) {
+        console.error('Error loading storage analysis:', error);
+        document.getElementById('storage-analysis').innerHTML = '<div class="text-center py-8 text-red-400">Xatolik yuz berdi</div>';
+    }
+}
+
+function renderStorageAnalysis(analysis) {
+    const container = document.getElementById('storage-analysis');
+    
+    // File types chart data
+    const fileTypes = Object.entries(analysis.file_types)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10);
+    
+    container.innerHTML = `
+        <div class="grid md:grid-cols-2 gap-6 mb-6">
+            <div class="bg-dark-bg p-4 rounded-lg">
+                <h4 class="font-semibold mb-3">Umumiy statistika</h4>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span>Jami subdomenlar:</span>
+                        <span class="font-semibold">${analysis.total_subdomains}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Jami hajm:</span>
+                        <span class="font-semibold">${formatFileSize(analysis.total_size)}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Jami fayllar:</span>
+                        <span class="font-semibold">${analysis.total_files.toLocaleString()}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Bo'sh saytlar:</span>
+                        <span class="font-semibold">${analysis.empty_subdomains.length}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="bg-dark-bg p-4 rounded-lg">
+                <h4 class="font-semibold mb-3">Hajm bo'yicha taqsimot</h4>
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span>Kichik (&lt; 1MB):</span>
+                        <span class="font-semibold">${analysis.size_distribution.small}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>O'rta (1-10MB):</span>
+                        <span class="font-semibold">${analysis.size_distribution.medium}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Katta (10-100MB):</span>
+                        <span class="font-semibold">${analysis.size_distribution.large}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span>Juda katta (&gt; 100MB):</span>
+                        <span class="font-semibold">${analysis.size_distribution.xlarge}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="grid md:grid-cols-2 gap-6">
+            <div class="bg-dark-bg p-4 rounded-lg">
+                <h4 class="font-semibold mb-3">Eng katta saytlar</h4>
+                <div class="space-y-2">
+                    ${analysis.largest_subdomains.slice(0, 10).map(site => `
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="font-mono">${site.name}</span>
+                            <div class="text-right">
+                                <div>${formatFileSize(site.size)}</div>
+                                <div class="text-xs text-gray-400">${site.file_count} fayl</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            
+            <div class="bg-dark-bg p-4 rounded-lg">
+                <h4 class="font-semibold mb-3">Fayl turlari</h4>
+                <div class="space-y-2">
+                    ${fileTypes.map(([ext, count]) => `
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="font-mono">${ext || 'Kengaytmasiz'}</span>
+                            <span class="font-semibold">${count.toLocaleString()}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+        
+        ${analysis.empty_subdomains.length > 0 ? `
+            <div class="bg-dark-bg p-4 rounded-lg mt-6">
+                <h4 class="font-semibold mb-3">Bo'sh saytlar</h4>
+                <div class="grid md:grid-cols-3 gap-2">
+                    ${analysis.empty_subdomains.map(site => `
+                        <div class="text-sm font-mono bg-gray-800 p-2 rounded">
+                            ${site.name}
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        ` : ''}
+    `;
+}
+
+// Utility functions
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    loadStats();
+    showTab('users');
+    
+    // Auto-refresh stats every 30 seconds
+    setInterval(loadStats, 30000);
+});
+</script>
+
+<style>
+.tab-button.active {
+    color: #007aff;
+    border-color: #007aff;
+}
+</style>
+{% endblock %}

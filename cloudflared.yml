@@ -1,0 +1,28 @@
+
+# source: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/local-management/configuration-file/
+
+tunnel: tinchost
+credentials-file: /etc/cloudflared/tinchost.json
+
+ingress:
+  # Main domain - route to FastAPI app
+  - hostname: tinchost.uz
+    service: http://localhost:8000
+  
+  # Wildcard subdomains - route to nginx for static files
+  - hostname: "*.tinchost.uz"
+    service: http://localhost:80
+  
+  # Catch-all rule (required)
+  - service: http_status:404
+
+# Logging configuration
+loglevel: info
+logfile: /var/log/cloudflared/cloudflared.log
+
+# Connection settings
+protocol: quic
+no-autoupdate: true
+retries: 5
+
+

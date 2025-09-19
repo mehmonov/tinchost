@@ -1,0 +1,306 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - TincHost{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between items-center mb-8">
+        <h1 class="text-3xl font-bold">Dashboard</h1>
+        <div class="flex items-center space-x-4">
+            <span class="text-gray-300">{{ user.username }}</span>
+            <form action="/auth/logout" method="post" class="inline">
+                <button type="submit" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg">
+                    Chiqish
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-dark-card p-6 rounded-lg">
+            <h3 class="text-lg font-semibold mb-2">Jami saytlar</h3>
+            <p class="text-3xl font-bold text-accent" id="total-sites">0</p>
+        </div>
+        <div class="bg-dark-card p-6 rounded-lg">
+            <h3 class="text-lg font-semibold mb-2">Jami hajm</h3>
+            <p class="text-3xl font-bold text-accent" id="total-size">0 MB</p>
+        </div>
+        <div class="bg-dark-card p-6 rounded-lg">
+            <h3 class="text-lg font-semibold mb-2">Oxirgi yuklash</h3>
+            <p class="text-sm text-gray-400" id="last-upload">-</p>
+        </div>
+    </div>
+
+    <div class="bg-dark-card rounded-lg p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-semibold">Saytlarim</h2>
+            <button onclick="showUploadModal()" class="bg-accent hover:bg-accent-hover text-white px-4 py-2 rounded-lg">
+                Yangi sayt yuklash
+            </button>
+        </div>
+
+        <div id="sites-list" class="space-y-4">
+        </div>
+    </div>
+</div>
+
+<div id="upload-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-dark-card p-8 rounded-lg max-w-md w-full mx-4">
+        <h3 class="text-xl font-semibold mb-4">Yangi sayt yuklash</h3>
+
+        <form id="upload-form" enctype="multipart/form-data">
+            <div class="mb-4">
+                <label class="block text-sm font-medium mb-2">ZIP fayl</label>
+                <input type="file" id="file-input" name="file" accept=".zip" required
+                    class="w-full p-3 bg-dark-bg border border-dark-border rounded-lg">
+            </div>
+
+            <div class="mb-6">
+                <p class="text-sm text-gray-400">Subdomen nomi avtomatik ravishda 5 harfli random nom bilan yaratiladi.</p>
+            </div>
+
+            <div class="flex space-x-4">
+                <button type="button" onclick="hideUploadModal()"
+                    class="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 rounded-lg">
+                    Bekor qilish
+                </button>
+                <button type="submit" class="flex-1 bg-accent hover:bg-accent-hover text-white py-2 rounded-lg">
+                    Yuklash
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="edit-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+    <div class="bg-dark-card p-8 rounded-lg max-w-md w-full mx-4">
+        <h3 class="text-xl font-semibold mb-4">Subdomen tahrirlash</h3>
+
+        <form id="edit-form">
+            <input type="hidden" id="edit-subdomain-id">
+            <div class="mb-6">
+                <label class="block text-sm font-medium mb-2">Yangi nom</label>
+                <input type="text" id="edit-subdomain-name" required
+                    class="w-full p-3 bg-dark-bg border border-dark-border rounded-lg">
+            </div>
+
+            <div class="flex space-x-4">
+                <button type="button" onclick="hideEditModal()"
+                    class="flex-1 bg-gray-600 hover:bg-gray-700 text-white py-2 rounded-lg">
+                    Bekor qilish
+                </button>
+                <button type="submit" class="flex-1 bg-accent hover:bg-accent-hover text-white py-2 rounded-lg">
+                    Saqlash
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    let userSites = [];
+
+    async function loadSites() {
+        try {
+            const response = await fetch('/subdomain/list');
+            const data = await response.json();
+            userSites = data.subdomains;
+            renderSites();
+            updateStats();
+        } catch (error) {
+            console.error('Error loading sites:', error);
+        }
+    }
+
+    function renderSites() {
+        const container = document.getElementById('sites-list');
+
+        if (userSites.length === 0) {
+            container.innerHTML = '<p class="text-gray-400 text-center py-8">Hali saytlar yuklangan emas</p>';
+            return;
+        }
+
+        container.innerHTML = userSites.map(site => `
+        <div class="bg-dark-bg p-4 rounded-lg flex justify-between items-center">
+            <div>
+                <h3 class="font-semibold">${site.subdomain_name}</h3>
+                <p class="text-sm text-gray-400">${site.url}</p>
+                <p class="text-xs text-gray-500">${formatFileSize(site.file_size)} • ${site.file_count} fayl</p>
+            </div>
+            <div class="flex space-x-2">
+                <a href="${site.url}" target="_blank" 
+                   class="bg-accent hover:bg-accent-hover text-white px-3 py-1 rounded text-sm">
+                    Ochish
+                </a>
+                <button onclick="editSite(${site.id}, '${site.subdomain_name}')" 
+                        class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm">
+                    Tahrirlash
+                </button>
+                <button onclick="deleteSite(${site.id})" 
+                        class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
+                    O'chirish
+                </button>
+            </div>
+        </div>
+    `).join('');
+    }
+
+    function updateStats() {
+        document.getElementById('total-sites').textContent = userSites.length;
+
+        const totalSize = userSites.reduce((sum, site) => sum + site.file_size, 0);
+        document.getElementById('total-size').textContent = formatFileSize(totalSize);
+
+        if (userSites.length > 0) {
+            const lastSite = userSites[0];
+            document.getElementById('last-upload').textContent = new Date(lastSite.created_at).toLocaleDateString();
+        }
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function showUploadModal() {
+        document.getElementById('upload-modal').classList.remove('hidden');
+        document.getElementById('upload-modal').classList.add('flex');
+    }
+
+    function hideUploadModal() {
+        document.getElementById('upload-modal').classList.add('hidden');
+        document.getElementById('upload-modal').classList.remove('flex');
+        document.getElementById('upload-form').reset();
+    }
+
+    function editSite(id, name) {
+        document.getElementById('edit-subdomain-id').value = id;
+        document.getElementById('edit-subdomain-name').value = name;
+        document.getElementById('edit-modal').classList.remove('hidden');
+        document.getElementById('edit-modal').classList.add('flex');
+    }
+
+    function hideEditModal() {
+        document.getElementById('edit-modal').classList.add('hidden');
+        document.getElementById('edit-modal').classList.remove('flex');
+    }
+
+    async function deleteSite(id) {
+        if (!confirm('Saytni o\'chirishni xohlaysizmi?')) return;
+
+        try {
+            const response = await fetch(`/subdomain/${id}`, { method: 'DELETE' });
+            const data = await response.json();
+
+            if (data.success) {
+                loadSites();
+            } else {
+                alert('Xatolik yuz berdi');
+            }
+        } catch (error) {
+            alert('Xatolik yuz berdi');
+        }
+    }
+
+    document.getElementById('upload-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const formData = new FormData(e.target);
+
+        try {
+            const response = await fetch('/upload/', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                hideUploadModal();
+                showSuccessNotification(data);
+                loadSites(); // Reload sites list
+            } else {
+                showErrorNotification(data.detail || 'Xatolik yuz berdi');
+            }
+        } catch (error) {
+            showErrorNotification('Xatolik yuz berdi');
+        }
+    });
+
+    document.getElementById('edit-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const formData = new FormData();
+        formData.append('subdomain_id', document.getElementById('edit-subdomain-id').value);
+        formData.append('new_name', document.getElementById('edit-subdomain-name').value);
+
+        try {
+            const response = await fetch('/subdomain/edit', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                hideEditModal();
+                loadSites();
+            } else {
+                alert('Xatolik yuz berdi');
+            }
+        } catch (error) {
+            alert('Xatolik yuz berdi');
+        }
+    });
+
+    function showSuccessNotification(data) {
+        const notification = document.createElement('div');
+        notification.className = 'fixed top-4 right-4 z-50 bg-green-600 text-white p-4 rounded-lg shadow-lg max-w-sm';
+        notification.innerHTML = `
+            <div class="flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                <div>
+                    <p class="font-medium">Muvaffaqiyatli yuklandi!</p>
+                    <p class="text-sm opacity-90">${data.subdomain}.tinchost.uz</p>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 5000);
+    }
+
+    function showErrorNotification(message) {
+        const notification = document.createElement('div');
+        notification.className = 'fixed top-4 right-4 z-50 bg-red-600 text-white p-4 rounded-lg shadow-lg max-w-sm';
+        notification.innerHTML = `
+            <div class="flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+                <p>${message}</p>
+            </div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 5000);
+    }
+
+    loadSites();
+</script>
+{% endblock %}
