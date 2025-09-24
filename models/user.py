@@ -30,6 +30,8 @@ class User(Base):
             # in one session and also rollback safety.
             with get_db().session() as session:
                 from models.admin import Admin
+                from models.subdomain import Subdomain
+
                 admin_record = session.scalars(
                     select(Admin)
                     .filter(Admin.user_id == self.id)
@@ -37,6 +39,15 @@ class User(Base):
 
                 if admin_record:
                     session.delete(admin_record)
+
+                subdomains = session.scalars(
+                    select(Subdomain)
+                    .filter(Subdomain.user_id == self.id)
+                ).all()
+
+                for subdomain in subdomains:
+                    session.delete(subdomain)
+
                 session.delete(self)
                 session.commit()
 
