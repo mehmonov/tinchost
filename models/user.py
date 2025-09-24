@@ -1,7 +1,8 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, Sequence
 from sqlalchemy import (
-    String, Text
+    String, Text,
+    select
 )
 from sqlalchemy.orm import (
     relationship,
@@ -11,73 +12,96 @@ from sqlalchemy.orm import (
 from models.base import Base
 from utils.db_utils import get_db
 
+
 class User(Base):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(primary_key=True)
     github_id: Mapped[int] = mapped_column(unique=True, index=True)
-    username: Mapped[str] = mapped_column(String(255), unique=True)
-    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=True)
+    username: Mapped[str] = mapped_column(String(255))
+    email: Mapped[str | None] = mapped_column(String(255))
+    avatar_url: Mapped[str | None] = mapped_column(Text)
     is_admin: Mapped[bool] = mapped_column(default=False)
-    avatar_url: Mapped[str] = mapped_column(Text, nullable=True)
-    # subdomains: Mapped[list["Subdomain"]] = relationship(
-    #     back_populates="user",
-    #     cascade="all, delete-orphan"
-    # )
 
-    def delete(self) -> bool:
+    def delete(self) -> bool:  # type: ignore
         """Delete user from database"""
         try:
-            # Delete admin privileges if exists
-            # loga4m: I should think about relationship
-            # between User model and Admin models.
-            super.delete()
+            # preferred this over super().delete()
+            # since we can achieve two operations
+            # in one session and also rollback safety.
+            with get_db().session() as session:
+                from models.admin import Admin
+                admin_record = session.scalars(
+                    select(Admin)
+                    .filter(Admin.user_id == self.id)
+                ).one_or_none()
+
+                if admin_record:
+                    session.delete(admin_record)
+                session.delete(self)
+                session.commit()
+
             return True
         except Exception as e:
             print(f"Error deleting user: {e}")
             return False
-    
-    def get_subdomains(self) -> List['Subdomain']:
+
+    def get_subdomains(self) -> Sequence['Subdomain']:  # type: ignore
         """Get all subdomains for this user"""
-        return self.subdomains
-    
+        from models.subdomain import Subdomain
+        return Subdomain.get_by_user_id(self.id)
+
     def make_admin(self) -> bool:
         """Make user admin"""
         try:
-            db.execute_query("INSERT OR IGNORE INTO admin_users (user_id) VALUES (?)", (self.id,))
+            from models.admin import Admin
+            with get_db().session() as session:
+                new_admin_record = Admin(user_id=self.id)
+                session.add(new_admin_record)
+                user = session.merge(self)
+                user.is_admin = True
+                session.commit()
             return True
         except Exception as e:
             print(f"Error making user admin: {e}")
             return False
-    
+
     def remove_admin(self) -> bool:
         """Remove admin privileges"""
-        if not self.id:
-            return False
-        
         try:
-            db.execute_query("DELETE FROM admin_users WHERE user_id = ?", (self.id,))
+            from models.admin import Admin
+            with get_db().session() as session:
+                admin_record = session.scalars(
+                    select(Admin)
+                    .filter(Admin.user_id == self.id)
+                ).one_or_none()
+                if admin_record:
+                    session.delete(admin_record)
+                user = session.merge(self)
+                user.is_admin = False
+                session.commit()
+
             return True
         except Exception as e:
             print(f"Error removing admin privileges: {e}")
             return False
-    
+
     @classmethod
     def get_by_id(cls, user_id: int) -> Optional['User']:
         """Get user by ID"""
         with get_db().session() as session:
             return session.get(User, user_id)
-    
+
     @classmethod
     def get_by_github_id(cls, github_id: int) -> Optional['User']:
         """Get user by GitHub ID"""
         with get_db().session() as session:
-            return session.scalar(
+            return session.scalars(
                 select(User)
                 .filter(User.github_id == github_id)
-            ).one_or_none() # checks for data integrity
-                            # on unique columns
+            ).one_or_none()  # checks for data integrity
+            # on unique columns
             # https://docs.sqlalchemy.org/en/20/core/connections.html#sqlalchemy.engine.ScalarResult.one_or_none
-    
+
     @classmethod
     def get_by_username(cls, username: str) -> Optional['User']:
         """Get user by username"""
@@ -86,23 +110,28 @@ class User(Base):
                 select(User)
                 .filter(User.username == username)
             ).one_or_none()
-    
+
     @classmethod
-    def get_all(cls) -> List['User']:
+    def get_all(cls) -> Sequence['User']:
         """Get all users"""
         with get_db().session() as session:
             return session.scalars(
                 select(User)
+                .order_by(User.created_at.desc())
             ).all()
-    
-    def to_dict(self) -> dict:
+
+    def to_dict(self, isoformat=True) -> dict:
         """Convert user to dictionary"""
+        created_at = self.created_at
+        if created_at and isoformat:
+            created_at = created_at.isoformat()  # type: ignore
+
         return {
             'id': self.id,
             'github_id': self.github_id,
             'username': self.username,
             'email': self.email,
             'avatar_url': self.avatar_url,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'created_at': created_at,
             'is_admin': self.is_admin
         }

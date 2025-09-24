@@ -99,12 +99,11 @@ class AuthManager:
                 email=primary_email,
                 avatar_url=avatar_url
             )
-            user.save()
         else:
             user.username = username
             user.email = primary_email
             user.avatar_url = avatar_url
-            user.save()
+        user.save()
         
         request.session.pop('oauth_state', None)
         
@@ -117,7 +116,7 @@ class AuthManager:
         request.session['is_admin'] = user.is_admin
     
     @staticmethod
-    def get_current_user(request: Request) -> User:
+    def get_current_user(request: Request) -> User | None:
         user_id = request.session.get('user_id')
         if not user_id:
             return None
@@ -149,7 +148,6 @@ class AuthManager:
             admin_user = User(
                 username=config.ADMIN_USERNAME,
                 email="admin@tinchost.uz",
-                id=-1
             )
             return admin_user
         
@@ -170,4 +168,4 @@ class AuthManager:
         request.session.pop('admin_username', None)
 
 def get_session_middleware():
-    return SessionMiddleware(secret_key=config.SECRET_KEY)
+    return SessionMiddleware(secret_key=config.SECRET_KEY) # Pylance says the parameter app is missing
