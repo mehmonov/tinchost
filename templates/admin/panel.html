@@ -294,10 +294,6 @@ function renderUsers() {
                 </div>
             </div>
             <div class="flex space-x-2">
-                <button onclick="toggleAdmin(${user.id}, ${user.is_admin})" 
-                        class="${user.is_admin ? 'bg-orange-600 hover:bg-orange-700' : 'bg-green-600 hover:bg-green-700'} text-white px-3 py-1 rounded text-sm">
-                    ${user.is_admin ? 'Admin olib tashlash' : 'Admin qilish'}
-                </button>
                 <button onclick="deleteUser(${user.id}, '${user.username}')" 
                         class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm">
                     O'chirish
@@ -431,24 +427,6 @@ function renderSystemInfo(info) {
 }
 
 // Action functions
-async function toggleAdmin(userId, isCurrentlyAdmin) {
-    const action = isCurrentlyAdmin ? 'olib tashlash' : 'qilish';
-    if (!confirm(`Foydalanuvchini admin ${action}ni xohlaysizmi?`)) return;
-    
-    try {
-        const response = await fetch(`/admin/user/${userId}/toggle-admin`, { method: 'POST' });
-        const data = await response.json();
-        
-        if (data.success) {
-            loadUsers();
-            loadStats();
-        } else {
-            alert('Xatolik yuz berdi');
-        }
-    } catch (error) {
-        alert('Xatolik yuz berdi');
-    }
-}
 
 async function deleteUser(userId, username) {
     if (!confirm(`${username} foydalanuvchisini o'chirishni xohlaysizmi? Bu barcha saytlarini ham o'chiradi.`)) return;

@@ -60,7 +60,6 @@ async def admin_panel(request: Request):
 @router.get("/stats", response_class=JSONResponse)
 async def get_admin_stats(request: Request):
     """Get server statistics for admin panel"""
-    # Check admin privileges
     AuthManager.require_admin(request)
     
     try:
@@ -108,7 +107,7 @@ async def get_admin_stats(request: Request):
             "users": {
                 "total": len(all_users),
                 "recent": len(recent_users),
-                "admins": len([u for u in all_users if u.is_admin()])
+                "admins": 1  # Only one pre-configured admin
             },
             "subdomains": {
                 "total": len(all_subdomains),
@@ -192,38 +191,6 @@ async def admin_delete_subdomain(request: Request, subdomain_id: int):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error deleting subdomain: {str(e)}")
-
-@router.post("/user/{user_id}/toggle-admin")
-async def toggle_user_admin(request: Request, user_id: int):
-    """Toggle admin privileges for a user"""
-    # Check admin privileges
-    current_admin = AuthManager.require_admin(request)
-    
-    try:
-        user = User.get_by_id(user_id)
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        
-        # Prevent removing admin from self
-        if user.id == current_admin.id:
-            raise HTTPException(status_code=400, detail="Cannot modify your own admin privileges")
-        
-        if user.is_admin():
-            success = user.remove_admin()
-            action = "removed"
-        else:
-            success = user.make_admin()
-            action = "granted"
-        
-        if success:
-            return {"success": True, "message": f"Admin privileges {action} successfully"}
-        else:
-            raise HTTPException(status_code=500, detail="Failed to update admin privileges")
-            
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error updating admin privileges: {str(e)}")
 
 @router.delete("/user/{user_id}")
 async def admin_delete_user(request: Request, user_id: int):

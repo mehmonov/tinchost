@@ -40,15 +40,7 @@ class Database:
                 )
             ''')
             
-            conn.execute('''
-                CREATE TABLE IF NOT EXISTS admin_users (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER UNIQUE NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES users (id)
-                )
-            ''')
-            
+
             conn.execute('CREATE INDEX IF NOT EXISTS idx_users_github_id ON users(github_id)')
             conn.execute('CREATE INDEX IF NOT EXISTS idx_subdomains_user_id ON subdomains(user_id)')
             conn.execute('CREATE INDEX IF NOT EXISTS idx_subdomains_name ON subdomains(subdomain_name)')
@@ -84,4 +76,4 @@ class Database:
 
 db = Database()
 
-# admin_users is truly trash way. but, i thought more about this
+# Admin is now handled through environment variables only - no database table needed

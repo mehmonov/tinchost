@@ -45,9 +45,6 @@ class User:
             for subdomain in subdomains:
                 subdomain.delete()
             
-            # Delete admin privileges if exists
-            db.execute_query("DELETE FROM admin_users WHERE user_id = ?", (self.id,))
-            
             # Delete user
             db.execute_query("DELETE FROM users WHERE id = ?", (self.id,))
             return True
@@ -64,36 +61,9 @@ class User:
         return Subdomain.get_by_user_id(self.id)
     
     def is_admin(self) -> bool:
-        """Check if user is admin"""
-        if not self.id:
-            return False
-        
-        result = db.execute_query("SELECT id FROM admin_users WHERE user_id = ?", (self.id,))
-        return len(result) > 0
-    
-    def make_admin(self) -> bool:
-        """Make user admin"""
-        if not self.id:
-            return False
-        
-        try:
-            db.execute_query("INSERT OR IGNORE INTO admin_users (user_id) VALUES (?)", (self.id,))
-            return True
-        except Exception as e:
-            print(f"Error making user admin: {e}")
-            return False
-    
-    def remove_admin(self) -> bool:
-        """Remove admin privileges"""
-        if not self.id:
-            return False
-        
-        try:
-            db.execute_query("DELETE FROM admin_users WHERE user_id = ?", (self.id,))
-            return True
-        except Exception as e:
-            print(f"Error removing admin privileges: {e}")
-            return False
+        """Check if user is admin - only the pre-configured admin from env"""
+        from config import config
+        return self.username == config.ADMIN_USERNAME and self.id == -1
     
     @classmethod
     def get_by_id(cls, user_id: int) -> Optional['User']:
