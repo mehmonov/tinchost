@@ -5,7 +5,7 @@ import shutil
 from datetime import datetime
 from typing import Optional, List
 from pathlib import Path
-from database import db
+import database as db
 from config import config
 
 class Subdomain:

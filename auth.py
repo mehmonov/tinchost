@@ -114,7 +114,7 @@ class AuthManager:
     def create_session(request: Request, user: User):
         request.session['user_id'] = user.id
         request.session['username'] = user.username
-        request.session['is_admin'] = user.is_admin()
+        request.session['is_admin'] = user.is_admin
     
     @staticmethod
     def get_current_user(request: Request) -> User:
@@ -141,7 +141,7 @@ class AuthManager:
     def require_admin(request: Request) -> User:
         user = AuthManager.get_current_user(request)
         
-        if user and user.is_admin():
+        if user and user.is_admin:
             return user
         
         admin_username = request.session.get('admin_username')

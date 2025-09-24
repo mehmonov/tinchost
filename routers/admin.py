@@ -108,7 +108,7 @@ async def get_admin_stats(request: Request):
             "users": {
                 "total": len(all_users),
                 "recent": len(recent_users),
-                "admins": len([u for u in all_users if u.is_admin()])
+                "admins": len([u for u in all_users if u.is_admin])
             },
             "subdomains": {
                 "total": len(all_subdomains),
@@ -208,7 +208,7 @@ async def toggle_user_admin(request: Request, user_id: int):
         if user.id == current_admin.id:
             raise HTTPException(status_code=400, detail="Cannot modify your own admin privileges")
         
-        if user.is_admin():
+        if user.is_admin:
             success = user.remove_admin()
             action = "removed"
         else:

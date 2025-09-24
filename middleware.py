@@ -24,7 +24,7 @@ def admin_required(func):
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Login required"
             )
-        if not user.is_admin():
+        if not user.is_admin:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Admin privileges required"
@@ -42,7 +42,7 @@ class AuthMiddleware:
             
             if request.url.path.startswith("/admin"):
                 user = AuthManager.get_current_user(request)
-                if not user or not user.is_admin():
+                if not user or not user.is_admin:
                     response = HTTPException(
                         status_code=status.HTTP_403_FORBIDDEN,
                         detail="Admin access required"
