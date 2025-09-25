@@ -8,12 +8,13 @@ from sqlalchemy import (
     Text,
     ForeignKey,
     DateTime,
-    select
+    select,
 )
 from sqlalchemy.orm import (
     Mapped,
     mapped_column,
-    relationship
+    relationship,
+    Session
 )
 
 from models.base import Base
@@ -37,7 +38,7 @@ class Subdomain(Base):
         DateTime, onupdate=get_current_datetime
     )
 
-    def delete(self) -> bool:  # type: ignore
+    def delete(self, session: Session | None = None) -> bool:  # type: ignore
         """Delete subdomain and its files"""
         try:
             """
@@ -56,7 +57,7 @@ class Subdomain(Base):
                     else if self fails: complete file loss
                     otherwise: success
             """
-            super().delete()
+            super().delete(session)
             if self.file_path and os.path.exists(self.file_path):
                 shutil.rmtree(self.file_path)
 

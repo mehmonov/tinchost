@@ -20,8 +20,10 @@ class Base(DeclarativeBase):
         DateTime, default=get_current_datetime
     )
 
-    def save(self) -> int:
-        with get_db().session() as session:
+    def save(self, session: Session | None = None) -> int:
+        if session is None:
+            session = get_db().session()
+        with session:
             if self.id:
                 if not hasattr(self, "_sa_instance_state"):
                     raise Exception(
@@ -36,7 +38,9 @@ class Base(DeclarativeBase):
             session.commit()
             return self.id
 
-    def delete(self) -> None:
-        with get_db().session() as session:
+    def delete(self, session: Session | None = None) -> None:
+        if session is None:
+            session = get_db().session()
+        with session:
             session.delete(self)
             session.commit()

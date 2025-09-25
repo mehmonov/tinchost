@@ -46,7 +46,7 @@ class User(Base):
                 ).all()
 
                 for subdomain in subdomains:
-                    session.delete(subdomain)
+                    subdomain.delete(session)
 
                 session.delete(self)
                 session.commit()
@@ -68,8 +68,8 @@ class User(Base):
             with get_db().session() as session:
                 new_admin_record = Admin(user_id=self.id)
                 session.add(new_admin_record)
-                user = session.merge(self)
-                user.is_admin = True
+                self.is_admin = True
+                self.save(session)
                 session.commit()
             return True
         except Exception as e:
@@ -87,8 +87,8 @@ class User(Base):
                 ).one_or_none()
                 if admin_record:
                     session.delete(admin_record)
-                user = session.merge(self)
-                user.is_admin = False
+                self.is_admin = False
+                self.save(session)
                 session.commit()
 
             return True
