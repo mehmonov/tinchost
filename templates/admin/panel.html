@@ -16,7 +16,7 @@
     </div>
 
     <!-- Statistics Cards -->
-    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div class="grid md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         <div class="bg-dark-card p-6 rounded-lg">
             <h3 class="text-lg font-semibold mb-2 text-blue-400">Server CPU</h3>
             <p class="text-3xl font-bold" id="cpu-usage">-</p>
@@ -33,6 +33,11 @@
             <p class="text-sm text-gray-400">Disk ishlatilishi</p>
         </div>
         <div class="bg-dark-card p-6 rounded-lg">
+            <h3 class="text-lg font-semibold mb-2 text-orange-400">SWS Disk</h3>
+            <p class="text-3xl font-bold" id="sws-disk-usage">-</p>
+            <p class="text-sm text-gray-400">/media/storage/sws</p>
+        </div>
+        <div class="bg-dark-card p-6 rounded-lg">
             <h3 class="text-lg font-semibold mb-2 text-purple-400">Saytlar</h3>
             <p class="text-3xl font-bold" id="total-sites">-</p>
             <p class="text-sm text-gray-400">Jami subdomenlar</p>
@@ -40,7 +45,7 @@
     </div>
 
     <!-- Detailed Statistics -->
-    <div class="grid lg:grid-cols-2 gap-6 mb-8">
+    <div class="grid lg:grid-cols-3 gap-6 mb-8">
         <div class="bg-dark-card p-6 rounded-lg">
             <h2 class="text-xl font-semibold mb-4">Foydalanuvchilar statistikasi</h2>
             <div class="space-y-3">
@@ -76,6 +81,24 @@
                 </div>
             </div>
         </div>
+        
+        <div class="bg-dark-card p-6 rounded-lg">
+            <h2 class="text-xl font-semibold mb-4">SWS Disk (/media/storage/sws)</h2>
+            <div class="space-y-3">
+                <div class="flex justify-between">
+                    <span>Jami hajm:</span>
+                    <span class="font-semibold" id="sws-total">-</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Ishlatilgan:</span>
+                    <span class="font-semibold" id="sws-used">-</span>
+                </div>
+                <div class="flex justify-between">
+                    <span>Bo'sh:</span>
+                    <span class="font-semibold" id="sws-free">-</span>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Management Tabs -->
@@ -101,6 +124,10 @@
                 <button onclick="showTab('storage')" id="storage-tab"
                         class="py-4 px-1 border-b-2 border-transparent hover:border-gray-300 font-medium text-sm tab-button">
                     Saqlash tahlili
+                </button>
+                <button onclick="showTab('logs')" id="logs-tab"
+                        class="py-4 px-1 border-b-2 border-transparent hover:border-gray-300 font-medium text-sm tab-button">
+                    Loglar
                 </button>
             </nav>
         </div>
@@ -184,6 +211,27 @@
                 <div class="text-center py-8 text-gray-400">Ma'lumotlar yuklanmoqda...</div>
             </div>
         </div>
+
+        <!-- Logs Tab -->
+        <div id="logs-content" class="p-6 tab-content hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Tizim logları</h3>
+                <div class="flex space-x-2">
+                    <select id="log-lines" class="bg-dark-bg border border-dark-border rounded px-3 py-1 text-sm">
+                        <option value="50">50 qator</option>
+                        <option value="100" selected>100 qator</option>
+                        <option value="200">200 qator</option>
+                        <option value="500">500 qator</option>
+                    </select>
+                    <button onclick="refreshLogs()" class="bg-accent hover:bg-accent-hover text-white px-4 py-2 rounded-lg">
+                        Yangilash
+                    </button>
+                </div>
+            </div>
+            <div id="logs-container" class="space-y-4">
+                <div class="text-center py-8 text-gray-400">Ma'lumotlar yuklanmoqda...</div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -226,6 +274,8 @@ function showTab(tabName) {
         loadMonitoring();
     } else if (tabName === 'storage') {
         loadStorageAnalysis();
+    } else if (tabName === 'logs') {
+        loadLogs();
     }
 }
 
@@ -243,6 +293,14 @@ async function loadStats() {
             document.getElementById('memory-usage').textContent = stats.system.memory_percent.toFixed(1) + '%';
             document.getElementById('disk-usage').textContent = stats.system.disk_percent.toFixed(1) + '%';
             
+            // SWS disk stats
+            if (stats.system.sws_disk) {
+                const swsPercent = (stats.system.sws_disk.used / stats.system.sws_disk.total) * 100;
+                document.getElementById('sws-disk-usage').textContent = swsPercent.toFixed(1) + '%';
+            } else {
+                document.getElementById('sws-disk-usage').textContent = 'N/A';
+            }
+            
             // User stats
             document.getElementById('total-users').textContent = stats.users.total;
             document.getElementById('admin-users').textContent = stats.users.admins;
@@ -253,6 +311,17 @@ async function loadStats() {
             document.getElementById('total-subdomains').textContent = stats.subdomains.total;
             document.getElementById('total-size').textContent = formatFileSize(stats.subdomains.total_size);
             document.getElementById('new-sites-week').textContent = stats.subdomains.recent;
+            
+            // SWS disk detailed stats
+            if (stats.system.sws_disk) {
+                document.getElementById('sws-total').textContent = formatFileSize(stats.system.sws_disk.total);
+                document.getElementById('sws-used').textContent = formatFileSize(stats.system.sws_disk.used);
+                document.getElementById('sws-free').textContent = formatFileSize(stats.system.sws_disk.free);
+            } else {
+                document.getElementById('sws-total').textContent = 'N/A';
+                document.getElementById('sws-used').textContent = 'N/A';
+                document.getElementById('sws-free').textContent = 'N/A';
+            }
         }
     } catch (error) {
         console.error('Error loading stats:', error);
@@ -374,7 +443,7 @@ function renderSystemInfo(info) {
     const uptimeHours = Math.floor((info.uptime_seconds % 86400) / 3600);
     
     container.innerHTML = `
-        <div class="grid md:grid-cols-2 gap-6">
+        <div class="grid md:grid-cols-2 gap-6 mb-6">
             <div class="bg-dark-bg p-4 rounded-lg">
                 <h4 class="font-semibold mb-3">Tizim ma'lumotlari</h4>
                 <div class="space-y-2 text-sm">
@@ -423,7 +492,16 @@ function renderSystemInfo(info) {
                 </div>
             </div>
         </div>
+        
+        <!-- SWS Disk Information -->
+        <div class="bg-dark-bg p-4 rounded-lg" id="sws-disk-info">
+            <h4 class="font-semibold mb-3">SWS Disk Ma'lumotlari (/media/storage/sws)</h4>
+            <div class="text-center py-4 text-gray-400">Ma'lumotlar yuklanmoqda...</div>
+        </div>
     `;
+    
+    // Load SWS disk info separately
+    loadSwsDiskInfo();
 }
 
 // Action functions
@@ -483,6 +561,10 @@ function refreshMonitoring() {
 
 function refreshStorage() {
     loadStorageAnalysis();
+}
+
+function refreshLogs() {
+    loadLogs();
 }
 
 // Load monitoring data
@@ -831,6 +913,140 @@ function renderStorageAnalysis(analysis) {
     `;
 }
 
+// Load logs
+async function loadLogs() {
+    try {
+        const lines = document.getElementById('log-lines').value;
+        const response = await fetch(`/admin/logs?lines=${lines}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            renderLogs(data.logs);
+        }
+    } catch (error) {
+        console.error('Error loading logs:', error);
+        document.getElementById('logs-container').innerHTML = '<div class="text-center py-8 text-red-400">Xatolik yuz berdi</div>';
+    }
+}
+
+function renderLogs(logs) {
+    const container = document.getElementById('logs-container');
+    
+    if (logs.length === 0) {
+        container.innerHTML = '<div class="text-center py-8 text-gray-400">Loglar topilmadi</div>';
+        return;
+    }
+    
+    // Group logs by file
+    const logsByFile = {};
+    logs.forEach(log => {
+        if (!logsByFile[log.file]) {
+            logsByFile[log.file] = [];
+        }
+        logsByFile[log.file].push(log);
+    });
+    
+    container.innerHTML = Object.entries(logsByFile).map(([fileName, fileLogs]) => `
+        <div class="bg-dark-bg rounded-lg">
+            <div class="bg-gray-800 px-4 py-2 rounded-t-lg flex justify-between items-center">
+                <h4 class="font-semibold text-sm">${fileName}</h4>
+                <span class="text-xs text-gray-400">${fileLogs.length} qator</span>
+            </div>
+            <div class="p-4 max-h-96 overflow-y-auto">
+                <div class="space-y-1">
+                    ${fileLogs.slice(0, 50).map(log => `
+                        <div class="text-xs font-mono bg-gray-900 p-2 rounded border-l-2 ${getLogColor(log.content)}">
+                            <div class="text-gray-400 mb-1">${log.full_path}</div>
+                            <div class="text-gray-200">${escapeHtml(log.content)}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function getLogColor(content) {
+    const lowerContent = content.toLowerCase();
+    if (lowerContent.includes('error') || lowerContent.includes('failed') || lowerContent.includes('exception')) {
+        return 'border-red-500';
+    } else if (lowerContent.includes('warning') || lowerContent.includes('warn')) {
+        return 'border-yellow-500';
+    } else if (lowerContent.includes('info') || lowerContent.includes('success')) {
+        return 'border-blue-500';
+    }
+    return 'border-gray-600';
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Load SWS disk info
+async function loadSwsDiskInfo() {
+    try {
+        const response = await fetch('/admin/stats');
+        const data = await response.json();
+        
+        if (data.success && data.stats.system.sws_disk) {
+            const swsDisk = data.stats.system.sws_disk;
+            const swsPercent = (swsDisk.used / swsDisk.total) * 100;
+            
+            document.getElementById('sws-disk-info').innerHTML = `
+                <h4 class="font-semibold mb-3">SWS Disk Ma'lumotlari (/media/storage/sws)</h4>
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span>Jami hajm:</span>
+                            <span class="font-mono">${formatFileSize(swsDisk.total)}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Ishlatilgan:</span>
+                            <span class="font-mono">${formatFileSize(swsDisk.used)}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Bo'sh:</span>
+                            <span class="font-mono">${formatFileSize(swsDisk.free)}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Foiz:</span>
+                            <span class="font-mono ${swsPercent > 90 ? 'text-red-400' : swsPercent > 75 ? 'text-yellow-400' : 'text-green-400'}">${swsPercent.toFixed(1)}%</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center">
+                        <div class="w-full">
+                            <div class="flex justify-between text-sm mb-2">
+                                <span>Disk ishlatilishi</span>
+                                <span>${swsPercent.toFixed(1)}%</span>
+                            </div>
+                            <div class="w-full bg-gray-700 rounded-full h-4">
+                                <div class="h-4 rounded-full ${swsPercent > 90 ? 'bg-red-500' : swsPercent > 75 ? 'bg-yellow-500' : 'bg-green-500'}" 
+                                     style="width: ${swsPercent}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            document.getElementById('sws-disk-info').innerHTML = `
+                <h4 class="font-semibold mb-3">SWS Disk Ma'lumotlari (/media/storage/sws)</h4>
+                <div class="text-center py-4 text-yellow-400">
+                    <p>SWS disk ma'lumotlari mavjud emas</p>
+                    <p class="text-sm text-gray-400 mt-2">/media/storage/sws papkasi topilmadi yoki unga kirish huquqi yo'q</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading SWS disk info:', error);
+        document.getElementById('sws-disk-info').innerHTML = `
+            <h4 class="font-semibold mb-3">SWS Disk Ma'lumotlari (/media/storage/sws)</h4>
+            <div class="text-center py-4 text-red-400">Xatolik yuz berdi</div>
+        `;
+    }
+}
+
 // Utility functions
 function formatFileSize(bytes) {
     if (bytes === 0) return '0 B';
@@ -847,6 +1063,20 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Auto-refresh stats every 30 seconds
     setInterval(loadStats, 30000);
+    
+    // Auto-refresh logs if logs tab is active
+    setInterval(() => {
+        if (currentTab === 'logs') {
+            loadLogs();
+        }
+    }, 10000); // Refresh logs every 10 seconds
+    
+    // Event listener for log lines selector
+    document.getElementById('log-lines').addEventListener('change', function() {
+        if (currentTab === 'logs') {
+            loadLogs();
+        }
+    });
 });
 </script>
 

@@ -68,6 +68,15 @@ async def get_admin_stats(request: Request):
         memory = psutil.virtual_memory()
         disk = psutil.disk_usage('/')
         
+        # /media/storage/sws disk usage
+        sws_disk_usage = None
+        sws_path = "/media/storage/sws"
+        if os.path.exists(sws_path):
+            try:
+                sws_disk_usage = psutil.disk_usage(sws_path)
+            except Exception as e:
+                print(f"Error getting SWS disk usage: {e}")
+        
         # Database statistics
         all_users = User.get_all()
         all_subdomains = Subdomain.get_all()
@@ -102,7 +111,8 @@ async def get_admin_stats(request: Request):
                 "disk_total": disk.total,
                 "disk_used": disk.used,
                 "disk_percent": (disk.used / disk.total) * 100,
-                "sites_folder_size": sites_folder_size
+                "sites_folder_size": sites_folder_size,
+                "sws_disk": sws_disk_usage._asdict() if sws_disk_usage else None
             },
             "users": {
                 "total": len(all_users),
@@ -265,8 +275,11 @@ async def get_system_logs(request: Request, lines: int = 100):
         logs = []
         log_files = [
             "/var/log/nginx/access.log",
-            "/var/log/nginx/error.log",
-            "logs/app.log"
+            "/var/log/nginx/error.log", 
+            "/var/log/syslog",
+            "logs/app.log",
+            "logs/tinchost.log",
+            "logs/system.log"
         ]
         
         for log_file in log_files:
@@ -277,19 +290,25 @@ async def get_system_logs(request: Request, lines: int = 100):
                         recent_lines = file_lines[-lines:] if len(file_lines) > lines else file_lines
                         
                         for line in recent_lines:
-                            logs.append({
-                                "file": log_file,
-                                "content": line.strip(),
-                                "timestamp": datetime.utcnow().isoformat()
-                            })
+                            if line.strip():  # Skip empty lines
+                                logs.append({
+                                    "file": os.path.basename(log_file),
+                                    "full_path": log_file,
+                                    "content": line.strip(),
+                                    "timestamp": datetime.utcnow().isoformat()
+                                })
                 except Exception as e:
                     logs.append({
-                        "file": log_file,
+                        "file": os.path.basename(log_file),
+                        "full_path": log_file,
                         "content": f"Error reading log: {str(e)}",
                         "timestamp": datetime.utcnow().isoformat()
                     })
         
-        return {"success": True, "logs": logs}
+        # Sort logs by timestamp if available in log content
+        logs.sort(key=lambda x: x["timestamp"], reverse=True)
+        
+        return {"success": True, "logs": logs[:lines]}
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error getting logs: {str(e)}")
