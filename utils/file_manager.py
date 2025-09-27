@@ -98,18 +98,15 @@ class FileManager:
             import pwd
             import grp
             
-            # Get husniddin user ID and www-data group ID
             try:
                 husniddin_uid = pwd.getpwnam('husniddin').pw_uid
                 www_data_gid = grp.getgrnam('www-data').gr_gid
             except KeyError:
-                # Fallback to current user if husniddin doesn't exist
                 husniddin_uid = os.getuid()
                 www_data_gid = grp.getgrnam('www-data').gr_gid
             
             # Set ownership and permissions
             for root, dirs, files in os.walk(directory_path):
-                # Set directory ownership and permissions
                 os.chown(root, husniddin_uid, www_data_gid)
                 os.chmod(root, 0o775)
                 
@@ -148,7 +145,6 @@ class FileManager:
         
         """
         try:
-            # Root da index.html borligini tekshirish
             index_files = ['index.html', 'index.htm', 'default.html', 'home.html']
             root_has_index = any(
                 os.path.exists(os.path.join(target_directory, idx)) 
@@ -156,17 +152,14 @@ class FileManager:
             )
             
             if root_has_index:
-                return  # Root da index bor, hech narsa qilish shart emas
+                return  
             
-            # __MACOSX papkasini o'chirish
             macosx_path = os.path.join(target_directory, '__MACOSX')
             if os.path.exists(macosx_path):
                 shutil.rmtree(macosx_path)
             
-            # Ichki papkalardan HTML fayllarni qidirish
             html_files = []
             for root, dirs, files in os.walk(target_directory):
-                # __MACOSX papkasini e'tiborsiz qoldirish
                 dirs[:] = [d for d in dirs if d != '__MACOSX']
                 
                 for file in files:
@@ -174,30 +167,24 @@ class FileManager:
                         html_files.append(os.path.join(root, file))
             
             if not html_files:
-                return  # HTML fayllar topilmadi
+                return 
             
-            # Eng yaxshi index faylni topish
             best_index = None
             
-            # Avval index nomli fayllarni qidirish
             for html_file in html_files:
                 basename = os.path.basename(html_file).lower()
                 if basename in index_files:
                     best_index = html_file
                     break
             
-            # Agar index fayl topilmasa, birinchi HTML faylni olish
             if not best_index and html_files:
                 best_index = html_files[0]
             
             if best_index:
-                # Eng yaxshi faylni root ga ko'chirish
                 target_index = os.path.join(target_directory, 'index.html')
                 
-                # Agar fayl boshqa papkada bo'lsa, butun papka tarkibini ko'chirish
                 source_dir = os.path.dirname(best_index)
                 if source_dir != target_directory:
-                    # Ichki papkadagi barcha fayllarni root ga ko'chirish
                     for item in os.listdir(source_dir):
                         source_item = os.path.join(source_dir, item)
                         target_item = os.path.join(target_directory, item)
@@ -209,12 +196,10 @@ class FileManager:
                             if not os.path.exists(target_item):
                                 shutil.copytree(source_item, target_item)
                 
-                # Agar hali ham index.html yo'q bo'lsa, eng yaxshi faylni nusxalash
                 if not os.path.exists(target_index):
                     shutil.copy2(best_index, target_index)
                     
         except Exception as e:
-            # Xatolik bo'lsa, log yozish lekin davom etish
             import logging
             logging.warning(f"Directory structure fix failed: {str(e)}")
     
