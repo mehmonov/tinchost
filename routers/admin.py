@@ -89,7 +89,7 @@ async def get_admin_stats(request: Request):
             total_files += subdomain.get_file_count()
         
         # Recent activity (last 7 days)
-        week_ago = datetime.utcnow() - timedelta(days=7)
+        week_ago = datetime.now() - timedelta(days=7)
         recent_users = [u for u in all_users if u.created_at and u.created_at > week_ago]
         recent_subdomains = [s for s in all_subdomains if s.created_at and s.created_at > week_ago]
         
@@ -237,7 +237,7 @@ async def get_system_info(request: Request):
     try:
         # System information
         boot_time = datetime.fromtimestamp(psutil.boot_time())
-        uptime = datetime.utcnow() - boot_time
+        uptime = datetime.now() - boot_time
         
         # Network information
         network_stats = psutil.net_io_counters()
@@ -295,14 +295,14 @@ async def get_system_logs(request: Request, lines: int = 100):
                                     "file": os.path.basename(log_file),
                                     "full_path": log_file,
                                     "content": line.strip(),
-                                    "timestamp": datetime.utcnow().isoformat()
+                                    "timestamp": datetime.now().isoformat()
                                 })
                 except Exception as e:
                     logs.append({
                         "file": os.path.basename(log_file),
                         "full_path": log_file,
                         "content": f"Error reading log: {str(e)}",
-                        "timestamp": datetime.utcnow().isoformat()
+                        "timestamp": datetime.now().isoformat()
                     })
         
         # Sort logs by timestamp if available in log content
@@ -324,7 +324,7 @@ async def get_user_activity(request: Request, days: int = 7):
         activity_data = []
         
         for i in range(days):
-            date = datetime.utcnow() - timedelta(days=i)
+            date = datetime.now() - timedelta(days=i)
             start_of_day = date.replace(hour=0, minute=0, second=0, microsecond=0)
             end_of_day = date.replace(hour=23, minute=59, second=59, microsecond=999999)
             

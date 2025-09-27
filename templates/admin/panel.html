@@ -275,7 +275,7 @@
         } else if (tabName === 'subdomains') {
             loadSubdomains();
         } else if (tabName === 'system') {
-            loadSystemInfo();
+            setTimeout(() => loadSystemInfo(), 100); // Small delay to ensure DOM is ready
         } else if (tabName === 'monitoring') {
             loadMonitoring();
         } else if (tabName === 'storage') {
@@ -412,6 +412,9 @@
                     ${formatFileSize(subdomain.file_size)} • 
                     ${subdomain.file_count} fayl
                 </p>
+                <p class="text-xs text-gray-400">
+                    Yuklangan: ${subdomain.created_at ? formatDate(subdomain.created_at) : 'Noma\'lum'}
+                </p>
             </div>
             <div class="flex space-x-2">
                 <a href="${subdomain.url}" target="_blank" 
@@ -429,24 +432,48 @@
 
     // Load system info
     async function loadSystemInfo() {
+        const container = document.getElementById('system-info');
+        if (!container) {
+            console.error('System info container not found!');
+            return;
+        }
+        
+        container.innerHTML = '<div class="text-center py-8 text-gray-400">Ma\'lumotlar yuklanmoqda...</div>';
+        
         try {
             const response = await fetch('/admin/system-info');
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
             const data = await response.json();
 
             if (data.success) {
                 renderSystemInfo(data.system_info);
+            } else {
+                container.innerHTML = '<div class="text-center py-8 text-red-400">Ma\'lumotlar yuklanmadi</div>';
             }
         } catch (error) {
             console.error('Error loading system info:', error);
-            document.getElementById('system-info').innerHTML = '<div class="text-center py-8 text-red-400">Xatolik yuz berdi</div>';
+            container.innerHTML = `<div class="text-center py-8 text-red-400">Xatolik yuz berdi: ${error.message}</div>`;
         }
     }
 
     function renderSystemInfo(info) {
         const container = document.getElementById('system-info');
+        
+        if (!container) {
+            console.error('System info container not found!');
+            return;
+        }
+        
+        if (!info) {
+            container.innerHTML = '<div class="text-center py-8 text-red-400">Ma\'lumotlar noto\'g\'ri formatda</div>';
+            return;
+        }
 
-        const uptimeDays = Math.floor(info.uptime_seconds / 86400);
-        const uptimeHours = Math.floor((info.uptime_seconds % 86400) / 3600);
+        const uptimeDays = Math.floor((info.uptime_seconds || 0) / 86400);
+        const uptimeHours = Math.floor(((info.uptime_seconds || 0) % 86400) / 3600);
 
         container.innerHTML = `
         <div class="grid md:grid-cols-2 gap-6 mb-6">
@@ -455,15 +482,15 @@
                 <div class="space-y-2 text-sm">
                     <div class="flex justify-between">
                         <span>Hostname:</span>
-                        <span class="font-mono">${info.hostname}</span>
+                        <span class="font-mono">${info.hostname || 'N/A'}</span>
                     </div>
                     <div class="flex justify-between">
                         <span>Platform:</span>
-                        <span class="font-mono">${info.platform}</span>
+                        <span class="font-mono">${info.platform || 'N/A'}</span>
                     </div>
                     <div class="flex justify-between">
                         <span>Architecture:</span>
-                        <span class="font-mono">${info.architecture}</span>
+                        <span class="font-mono">${info.architecture || 'N/A'}</span>
                     </div>
                     <div class="flex justify-between">
                         <span>Uptime:</span>
@@ -471,7 +498,7 @@
                     </div>
                     <div class="flex justify-between">
                         <span>Processes:</span>
-                        <span class="font-mono">${info.process_count}</span>
+                        <span class="font-mono">${info.process_count || 0}</span>
                     </div>
                 </div>
             </div>
@@ -481,19 +508,19 @@
                 <div class="space-y-2 text-sm">
                     <div class="flex justify-between">
                         <span>Yuborilgan:</span>
-                        <span class="font-mono">${formatFileSize(info.network.bytes_sent)}</span>
+                        <span class="font-mono">${formatFileSize(info.network.bytes_sent || 0)}</span>
                     </div>
                     <div class="flex justify-between">
                         <span>Qabul qilingan:</span>
-                        <span class="font-mono">${formatFileSize(info.network.bytes_recv)}</span>
+                        <span class="font-mono">${formatFileSize(info.network.bytes_recv || 0)}</span>
                     </div>
                     <div class="flex justify-between">
                         <span>Paketlar (yuborilgan):</span>
-                        <span class="font-mono">${info.network.packets_sent.toLocaleString()}</span>
+                        <span class="font-mono">${(info.network.packets_sent || 0).toLocaleString()}</span>
                     </div>
                     <div class="flex justify-between">
                         <span>Paketlar (qabul):</span>
-                        <span class="font-mono">${info.network.packets_recv.toLocaleString()}</span>
+                        <span class="font-mono">${(info.network.packets_recv || 0).toLocaleString()}</span>
                     </div>
                 </div>
             </div>
@@ -507,7 +534,7 @@
     `;
 
         // Load SWS disk info separately
-        loadSwsDiskInfo();
+        setTimeout(() => loadSwsDiskInfo(), 500);
     }
 
     // Action functions
@@ -1060,6 +1087,22 @@
         const sizes = ['B', 'KB', 'MB', 'GB'];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function formatDate(dateString) {
+        if (!dateString) return 'Noma\'lum';
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('uz-UZ', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (error) {
+            return 'Noma\'lum';
+        }
     }
 
     // Initialize
