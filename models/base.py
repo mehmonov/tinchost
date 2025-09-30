@@ -1,13 +1,12 @@
+from __future__ import annotations
 from datetime import datetime
 from sqlalchemy import (
     DateTime
 )
 from sqlalchemy.orm import (
     DeclarativeBase,
-    relationship,
     Mapped,
     mapped_column,
-    Session
 )
 from sqlalchemy.orm.session import make_transient
 from utils.db_utils import get_db

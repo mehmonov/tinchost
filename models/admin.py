@@ -1,15 +1,18 @@
-from models.base import Base
-from utils.db_utils import get_db
+from typing import Any
+from dataclasses import dataclass
+from config import config
 
-from sqlalchemy import ForeignKey
-from sqlalchemy.orm import (
-    Mapped,
-    mapped_column
-)
 
-class Admin(Base):
-    __tablename__ = "admin_users"
+@dataclass
+class Admin:
+    username: str = config.ADMIN_USERNAME
+    email: str = config.ADMIN_EMAIL
+    is_admin: bool = True
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True)
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "username": self.username,
+            "email": self.email,
+            "is_admin": self.is_admin
+        }
 

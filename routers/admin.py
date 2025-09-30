@@ -17,6 +17,11 @@ templates = Jinja2Templates(directory="templates")
 @router.get("/login", response_class=HTMLResponse)
 async def admin_login_page(request: Request):
     """Admin login page"""
+    AuthManager.require_user_not_logged_in(request)
+
+    if AuthManager.is_admin_logged_in(request):
+        return RedirectResponse("/admin", status_code=302)
+
     return templates.TemplateResponse("admin/login.html", {
         "request": request
     })
@@ -24,7 +29,10 @@ async def admin_login_page(request: Request):
 @router.post("/login")
 async def admin_login(request: Request, username: str = Form(...), password: str = Form(...)):
     """Admin login handler"""
-    if AuthManager.admin_login(request, username, password):
+    AuthManager.require_user_not_logged_in(request)
+
+    if AuthManager.is_admin_logged_in(request) \
+        or AuthManager.admin_login(request, username, password):
         return RedirectResponse("/admin", status_code=302)
     else:
         return templates.TemplateResponse("admin/login.html", {
@@ -43,15 +51,12 @@ async def admin_panel(request: Request):
     """Admin panel main page"""
     try:
         # Check admin privileges
-        user = AuthManager.require_admin(request)
-        
+        admin = AuthManager.require_admin(request)
         return templates.TemplateResponse("admin/panel.html", {
             "request": request,
-            "user": user.to_dict() if hasattr(user, 'to_dict') else {
-                'username': user.username,
-                'is_admin': True
-            }
+            "user": admin.to_dict()
         })
+
     except HTTPException as e:
         if e.status_code == 403:
             return RedirectResponse("/admin/login", status_code=302)
@@ -117,8 +122,7 @@ async def get_admin_stats(request: Request):
             "users": {
                 "total": len(all_users),
                 "recent": len(recent_users),
-                "admins": len([u for u in all_users if u.is_admin])
-
+                "admins": 1
             },
             "subdomains": {
                 "total": len(all_subdomains),
@@ -203,52 +207,17 @@ async def admin_delete_subdomain(request: Request, subdomain_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error deleting subdomain: {str(e)}")
 
-@router.post("/user/{user_id}/toggle-admin")
-async def toggle_user_admin(request: Request, user_id: int):
-    """Toggle admin privileges for a user"""
-    # Check admin privileges
-    current_admin = AuthManager.require_admin(request)
-    
-    try:
-        user = User.get_by_id(user_id)
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        
-        # Prevent removing admin from self
-        if user.id == current_admin.id:
-            raise HTTPException(status_code=400, detail="Cannot modify your own admin privileges")
-        
-        if user.is_admin:
-            success = user.remove_admin()
-            action = "removed"
-        else:
-            success = user.make_admin()
-            action = "granted"
-        
-        if success:
-            return {"success": True, "message": f"Admin privileges {action} successfully"}
-        else:
-            raise HTTPException(status_code=500, detail="Failed to update admin privileges")
-            
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error updating admin privileges: {str(e)}")
 
 @router.delete("/user/{user_id}")
 async def admin_delete_user(request: Request, user_id: int):
     """Admin delete user and all their subdomains"""
     # Check admin privileges
-    current_admin = AuthManager.require_admin(request)
+    AuthManager.require_admin(request)
     
     try:
         user = User.get_by_id(user_id)
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        
-        # Prevent deleting self
-        if user.id == current_admin.id:
-            raise HTTPException(status_code=400, detail="Cannot delete your own account")
         
         success = user.delete()
         if success:
@@ -280,7 +249,7 @@ async def get_system_info(request: Request):
         
         system_info = {
             "hostname": os.uname().nodename,
-            "platform": os.uname().system,
+            "platform": os.uname().sysname,
             "architecture": os.uname().machine,
             "boot_time": boot_time.isoformat(),
             "uptime_seconds": int(uptime.total_seconds()),

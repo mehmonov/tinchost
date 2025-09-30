@@ -1,8 +1,10 @@
-from fastapi import Request, HTTPException, status
+from __future__ import annotations
+from fastapi import HTTPException, status
 import httpx
 from starlette.middleware.sessions import SessionMiddleware
 from config import config
 from models.user import User
+from models.admin import Admin
 import secrets
 
 # https://gist.github.com/pelson/47c0c89a3522ed8da5cc305afc2562b0
@@ -110,10 +112,10 @@ class AuthManager:
         return user
     
     @staticmethod
-    def create_session(request: Request, user: User):
+    def create_session(request: Request, user: User) -> None:
+        AuthManager.admin_logout(request)
         request.session['user_id'] = user.id
         request.session['username'] = user.username
-        request.session['is_admin'] = user.is_admin
     
     @staticmethod
     def get_current_user(request: Request) -> User | None:
@@ -123,7 +125,7 @@ class AuthManager:
         return User.get_by_id(user_id)
     
     @staticmethod
-    def logout(request: Request):
+    def logout(request: Request) -> None:
         request.session.clear()
     
     @staticmethod
@@ -135,35 +137,45 @@ class AuthManager:
                 detail="Authentication required"
             )
         return user
+
+    @staticmethod
+    def require_user_not_logged_in(request: Request) -> None:
+        user = AuthManager.get_current_user(request)
+
+        if user is not None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied"
+            )
     
     @staticmethod
-    def require_admin(request: Request) -> User:
+    def require_admin(request: Request) -> Admin:
         user = AuthManager.get_current_user(request)
         
-        if user and user.is_admin:
-            return user
-        
-
-        admin_username = request.session.get('admin_username')
-        if admin_username == config.ADMIN_USERNAME:
-            admin_user = User(
-                username=config.ADMIN_USERNAME,
-                email="admin@tinchost.uz",
-            )
-            return admin_user
-
+        if user is None and AuthManager.is_admin_logged_in(request):
+            return Admin()
         
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin privileges required"
         )
+
+    @staticmethod
+    def is_admin_logged_in(request: Request):
+        admin_username: str | None = request.session.get("admin_username")
+        return admin_username == config.ADMIN_USERNAME
     
     @staticmethod
     def admin_login(request: Request, username: str, password: str) -> bool:
-        if username == config.ADMIN_USERNAME and password == config.ADMIN_PASSWORD:
+        user = AuthManager.get_current_user(request)
+
+        if user is None and username == config.ADMIN_USERNAME \
+            and password == config.ADMIN_PASSWORD:
             request.session['admin_username'] = username
             return True
         return False
+
+        
     
     @staticmethod
     def admin_logout(request: Request):
