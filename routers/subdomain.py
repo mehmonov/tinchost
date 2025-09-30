@@ -18,7 +18,7 @@ async def edit_subdomain(
     if not subdomain:
         raise HTTPException(status_code=404, detail="Subdomain not found")
     
-    if subdomain.user_id != user.id and not user.is_admin():
+    if subdomain.user_id != user.id and not user.is_admin:
         raise HTTPException(status_code=403, detail="Access denied")
     
     if not new_name or len(new_name) < 3:
@@ -58,7 +58,7 @@ async def delete_subdomain(request: Request, subdomain_id: int):
     if not subdomain:
         raise HTTPException(status_code=404, detail="Subdomain not found")
     
-    if subdomain.user_id != user.id and not user.is_admin():
+    if subdomain.user_id != user.id and not user.is_admin:
         raise HTTPException(status_code=403, detail="Access denied")
     
     success = subdomain.delete()

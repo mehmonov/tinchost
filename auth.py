@@ -99,12 +99,11 @@ class AuthManager:
                 email=primary_email,
                 avatar_url=avatar_url
             )
-            user.save()
         else:
             user.username = username
             user.email = primary_email
             user.avatar_url = avatar_url
-            user.save()
+        user.save()
         
         request.session.pop('oauth_state', None)
         
@@ -114,10 +113,10 @@ class AuthManager:
     def create_session(request: Request, user: User):
         request.session['user_id'] = user.id
         request.session['username'] = user.username
-        request.session['is_admin'] = user.is_admin()
+        request.session['is_admin'] = user.is_admin
     
     @staticmethod
-    def get_current_user(request: Request) -> User:
+    def get_current_user(request: Request) -> User | None:
         user_id = request.session.get('user_id')
         if not user_id:
             return None
@@ -141,20 +140,18 @@ class AuthManager:
     def require_admin(request: Request) -> User:
         user = AuthManager.get_current_user(request)
         
-        if user and user.is_admin():
+        if user and user.is_admin:
             return user
         
-        # Only allow admin session if no user is logged in
-        if user is None:
-            admin_username = request.session.get('admin_username')
-            if admin_username == config.ADMIN_USERNAME:
-                admin_user = User(
-                    username=config.ADMIN_USERNAME,
-                    email="admin@tinchost.uz",
-                    id=-1,
-                    github_id=None
-                )
-                return admin_user
+
+        admin_username = request.session.get('admin_username')
+        if admin_username == config.ADMIN_USERNAME:
+            admin_user = User(
+                username=config.ADMIN_USERNAME,
+                email="admin@tinchost.uz",
+            )
+            return admin_user
+
         
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -173,4 +170,4 @@ class AuthManager:
         request.session.pop('admin_username', None)
 
 def get_session_middleware():
-    return SessionMiddleware(secret_key=config.SECRET_KEY)
+    return SessionMiddleware(secret_key=config.SECRET_KEY) # Pylance says the parameter app is missing

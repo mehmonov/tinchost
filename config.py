@@ -9,8 +9,10 @@ load_dotenv()
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
     DEBUG = os.getenv("DEBUG", "False").lower() == "true"
+
+    TIMEZONE = "Asia/Tashkent"
     
-    DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///tinchost.db")
+    DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+pysqlite:///tinchost.db")
     
     GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID")
     GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET")

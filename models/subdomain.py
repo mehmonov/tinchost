@@ -1,103 +1,107 @@
-
-
 import os
 import shutil
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Sequence
 from pathlib import Path
-from database import db
+from sqlalchemy import (
+    String,
+    Text,
+    ForeignKey,
+    DateTime,
+    select,
+)
+from sqlalchemy.orm import (
+    Mapped,
+    mapped_column,
+    relationship,
+    Session
+)
+
+from models.base import Base
+from utils.db_utils import get_db
+from utils.common import get_current_datetime
 from config import config
 
-class Subdomain:
+
+class Subdomain(Base):
     """Subdomain model"""
-    
-    def __init__(self, user_id: Optional[int] = None, subdomain_name: str = "",
-                 file_path: str = "", original_filename: Optional[str] = None,
-                 id: Optional[int] = None, created_at: Optional[datetime] = None,
-                 updated_at: Optional[datetime] = None):
-        self.id = id
-        self.user_id = user_id
-        self.subdomain_name = subdomain_name
-        self.file_path = file_path
-        self.original_filename = original_filename
-        self.created_at = created_at or datetime.utcnow()
-        self.updated_at = updated_at or datetime.utcnow()
-    
-    def save(self) -> int:
-        """Save subdomain to database"""
-        if self.id:
-            # Update existing subdomain
-            query = '''
-                UPDATE subdomains 
-                SET user_id = ?, subdomain_name = ?, file_path = ?, 
-                    original_filename = ?, updated_at = CURRENT_TIMESTAMP
-                WHERE id = ?
-            '''
-            db.execute_query(query, (self.user_id, self.subdomain_name, self.file_path, 
-                                   self.original_filename, self.id))
-            return self.id
-        else:
-            # Create new subdomain
-            query = '''
-                INSERT INTO subdomains (user_id, subdomain_name, file_path, original_filename)
-                VALUES (?, ?, ?, ?)
-            '''
-            subdomain_id = db.execute_query(query, (self.user_id, self.subdomain_name, 
-                                                  self.file_path, self.original_filename))
-            self.id = subdomain_id
-            return subdomain_id
-    
-    def delete(self) -> bool:
+    __tablename__ = "subdomains"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    from models.user import User
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"), index=True)
+    subdomain_name: Mapped[str] = mapped_column(
+        String(255), unique=True, index=True)
+    original_filename: Mapped[str | None] = mapped_column(String(255))
+    file_path: Mapped[str] = mapped_column(Text)
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime, onupdate=get_current_datetime
+    )
+
+    def delete(self, session: Session | None = None) -> bool:  # type: ignore
         """Delete subdomain and its files"""
-        if not self.id:
-            return False
-        
         try:
+            """
+            Order analysis:
+            Order:  self del
+                    file del
+
+                    if self del fails: no loss
+                    if file del fails: self resurrected and some file loss
+                    otherwise success
+
+            Order:  file del
+                    self del
+
+                    if file fails: some file loss
+                    else if self fails: complete file loss
+                    otherwise: success
+            """
+            super().delete(session)
             if self.file_path and os.path.exists(self.file_path):
                 shutil.rmtree(self.file_path)
-            
-            db.execute_query("DELETE FROM subdomains WHERE id = ?", (self.id,))
+
             return True
         except Exception as e:
+            self.save() # resurrect the record
             print(f"Error deleting subdomain: {e}")
             return False
-    
+
     def update_name(self, new_name: str) -> bool:
         """Update subdomain name and move files"""
-        if not self.id or not new_name:
+        if not new_name:
             return False
-        
+
         # Check if new name is available
         if self.name_exists(new_name):
             return False
-        
+
         try:
             old_path = self.file_path
             new_path = os.path.join(config.SITES_FOLDER, new_name)
-            
+
             # Move files if they exist
             if os.path.exists(old_path):
                 os.rename(old_path, new_path)
-            
-            
+
             self.subdomain_name = new_name
             self.file_path = new_path
             self.save()
-            
+
             return True
         except Exception as e:
             print(f"Error updating subdomain name: {e}")
             return False
-    
+
     def get_url(self) -> str:
         """Get full URL for subdomain"""
         return f"https://{self.subdomain_name}.{config.BASE_DOMAIN}"
-    
+
     def get_file_size(self) -> int:
         """Get total size of files in bytes"""
         if not os.path.exists(self.file_path):
             return 0
-        
+
         total_size = 0
         for dirpath, dirnames, filenames in os.walk(self.file_path):
             for filename in filenames:
@@ -105,113 +109,91 @@ class Subdomain:
                 if os.path.exists(filepath):
                     total_size += os.path.getsize(filepath)
         return total_size
-    
+
     def get_file_count(self) -> int:
         """Get total number of files"""
         if not os.path.exists(self.file_path):
             return 0
-        
+
         file_count = 0
         for dirpath, dirnames, filenames in os.walk(self.file_path):
             file_count += len(filenames)
         return file_count
-    
+
     @classmethod
     def get_by_id(cls, subdomain_id: int) -> Optional['Subdomain']:
         """Get subdomain by ID"""
-        result = db.execute_query("SELECT * FROM subdomains WHERE id = ?", (subdomain_id,))
-        if result:
-            row = result[0]
-            return cls(
-                id=row['id'],
-                user_id=row['user_id'],
-                subdomain_name=row['subdomain_name'],
-                file_path=row['file_path'],
-                original_filename=row['original_filename'],
-                created_at=datetime.fromisoformat(row['created_at']) if row['created_at'] else None,
-                updated_at=datetime.fromisoformat(row['updated_at']) if row['updated_at'] else None
-            )
-        return None
-    
+        with get_db().session() as session:
+            return session.get(Subdomain, subdomain_id)
+
     @classmethod
     def get_by_name(cls, subdomain_name: str) -> Optional['Subdomain']:
         """Get subdomain by name"""
-        result = db.execute_query("SELECT * FROM subdomains WHERE subdomain_name = ?", (subdomain_name,))
-        if result:
-            row = result[0]
-            return cls(
-                id=row['id'],
-                user_id=row['user_id'],
-                subdomain_name=row['subdomain_name'],
-                file_path=row['file_path'],
-                original_filename=row['original_filename'],
-                created_at=datetime.fromisoformat(row['created_at']) if row['created_at'] else None,
-                updated_at=datetime.fromisoformat(row['updated_at']) if row['updated_at'] else None
-            )
-        return None
-    
+        with get_db().session() as session:
+            return session.scalars(
+                select(Subdomain)
+                .filter(Subdomain.subdomain_name == subdomain_name)
+            ).one_or_none()
+
     @classmethod
-    def get_by_user_id(cls, user_id: int) -> List['Subdomain']:
+    def get_by_user_id(cls, user_id: int) -> Sequence['Subdomain']:
         """Get all subdomains for a user"""
-        result = db.execute_query("SELECT * FROM subdomains WHERE user_id = ? ORDER BY created_at DESC", (user_id,))
-        subdomains = []
-        for row in result:
-            subdomains.append(cls(
-                id=row['id'],
-                user_id=row['user_id'],
-                subdomain_name=row['subdomain_name'],
-                file_path=row['file_path'],
-                original_filename=row['original_filename'],
-                created_at=datetime.fromisoformat(row['created_at']) if row['created_at'] else None,
-                updated_at=datetime.fromisoformat(row['updated_at']) if row['updated_at'] else None
-            ))
-        return subdomains
-    
+        with get_db().session() as session:
+            return session.scalars(
+                select(Subdomain)
+                .filter(Subdomain.user_id == user_id)
+                .order_by(Subdomain.created_at.desc())
+            ).all()
+
     @classmethod
-    def get_all(cls) -> List['Subdomain']:
+    def get_all(cls) -> Sequence['Subdomain']:
         """Get all subdomains"""
-        result = db.execute_query("SELECT * FROM subdomains ORDER BY created_at DESC")
-        subdomains = []
-        for row in result:
-            subdomains.append(cls(
-                id=row['id'],
-                user_id=row['user_id'],
-                subdomain_name=row['subdomain_name'],
-                file_path=row['file_path'],
-                original_filename=row['original_filename'],
-                created_at=datetime.fromisoformat(row['created_at']) if row['created_at'] else None,
-                updated_at=datetime.fromisoformat(row['updated_at']) if row['updated_at'] else None
-            ))
-        return subdomains
-    
+        with get_db().session() as session:
+            return session.scalars(
+                select(Subdomain)
+                .order_by(Subdomain.created_at.desc())
+            ).all()
+
     @classmethod
     def name_exists(cls, subdomain_name: str) -> bool:
         """Check if subdomain name exists"""
-        result = db.execute_query("SELECT id FROM subdomains WHERE subdomain_name = ?", (subdomain_name,))
-        return len(result) > 0
-    
+        with get_db().session() as session:
+            result = session.scalars(
+                select(Subdomain.id)
+                .filter(Subdomain.subdomain_name == subdomain_name)
+            ).one_or_none()
+
+            return True if result else False
+
     @classmethod
-    def generate_unique_name(cls, base_name: str = None) -> str:
+    def generate_unique_name(cls, base_name: str | None = None) -> str:
         """Generate unique 5-character random subdomain name"""
         import random
         import string
-        
+
         # Always generate 5-character random name, ignore base_name
         while True:
             name = ''.join(random.choices(string.ascii_lowercase, k=5))
             if not cls.name_exists(name):
                 return name
-    
-    def to_dict(self) -> dict:
+
+    def to_dict(self, isoformat=True) -> dict:
         """Convert subdomain to dictionary"""
+        created_at = self.created_at
+        updated_at = self.updated_at
+        if created_at and isoformat:
+            created_at = created_at.isoformat()  # type: ignore
+        if updated_at and isoformat:
+            updated_at = updated_at.isoformat()  # type: ignore
+
         return {
             'id': self.id,
             'user_id': self.user_id,
             'subdomain_name': self.subdomain_name,
             'file_path': self.file_path,
             'original_filename': self.original_filename,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
+            'created_at': created_at,
+            'updated_at': updated_at,
             'url': self.get_url(),
             'file_size': self.get_file_size(),
             'file_count': self.get_file_count()
