@@ -60,7 +60,6 @@ async def admin_panel(request: Request):
 @router.get("/stats", response_class=JSONResponse)
 async def get_admin_stats(request: Request):
     """Get server statistics for admin panel"""
-    # Check admin privileges
     AuthManager.require_admin(request)
     
     try:
@@ -68,6 +67,15 @@ async def get_admin_stats(request: Request):
         cpu_percent = psutil.cpu_percent(interval=1)
         memory = psutil.virtual_memory()
         disk = psutil.disk_usage('/')
+        
+        # /media/storage/sws disk usage
+        sws_disk_usage = None
+        sws_path = "/media/storage/sws"
+        if os.path.exists(sws_path):
+            try:
+                sws_disk_usage = psutil.disk_usage(sws_path)
+            except Exception as e:
+                print(f"Error getting SWS disk usage: {e}")
         
         # Database statistics
         all_users = User.get_all()
@@ -81,7 +89,7 @@ async def get_admin_stats(request: Request):
             total_files += subdomain.get_file_count()
         
         # Recent activity (last 7 days)
-        week_ago = datetime.utcnow() - timedelta(days=7)
+        week_ago = datetime.now() - timedelta(days=7)
         recent_users = [u for u in all_users if u.created_at and u.created_at > week_ago]
         recent_subdomains = [s for s in all_subdomains if s.created_at and s.created_at > week_ago]
         
@@ -103,12 +111,14 @@ async def get_admin_stats(request: Request):
                 "disk_total": disk.total,
                 "disk_used": disk.used,
                 "disk_percent": (disk.used / disk.total) * 100,
-                "sites_folder_size": sites_folder_size
+                "sites_folder_size": sites_folder_size,
+                "sws_disk": sws_disk_usage._asdict() if sws_disk_usage else None
             },
             "users": {
                 "total": len(all_users),
                 "recent": len(recent_users),
                 "admins": len([u for u in all_users if u.is_admin])
+
             },
             "subdomains": {
                 "total": len(all_subdomains),
@@ -260,7 +270,7 @@ async def get_system_info(request: Request):
     try:
         # System information
         boot_time = datetime.fromtimestamp(psutil.boot_time())
-        uptime = datetime.utcnow() - boot_time
+        uptime = datetime.now() - boot_time
         
         # Network information
         network_stats = psutil.net_io_counters()
@@ -298,8 +308,11 @@ async def get_system_logs(request: Request, lines: int = 100):
         logs = []
         log_files = [
             "/var/log/nginx/access.log",
-            "/var/log/nginx/error.log",
-            "logs/app.log"
+            "/var/log/nginx/error.log", 
+            "/var/log/syslog",
+            "logs/app.log",
+            "logs/tinchost.log",
+            "logs/system.log"
         ]
         
         for log_file in log_files:
@@ -310,19 +323,25 @@ async def get_system_logs(request: Request, lines: int = 100):
                         recent_lines = file_lines[-lines:] if len(file_lines) > lines else file_lines
                         
                         for line in recent_lines:
-                            logs.append({
-                                "file": log_file,
-                                "content": line.strip(),
-                                "timestamp": datetime.utcnow().isoformat()
-                            })
+                            if line.strip():  # Skip empty lines
+                                logs.append({
+                                    "file": os.path.basename(log_file),
+                                    "full_path": log_file,
+                                    "content": line.strip(),
+                                    "timestamp": datetime.now().isoformat()
+                                })
                 except Exception as e:
                     logs.append({
-                        "file": log_file,
+                        "file": os.path.basename(log_file),
+                        "full_path": log_file,
                         "content": f"Error reading log: {str(e)}",
-                        "timestamp": datetime.utcnow().isoformat()
+                        "timestamp": datetime.now().isoformat()
                     })
         
-        return {"success": True, "logs": logs}
+        # Sort logs by timestamp if available in log content
+        logs.sort(key=lambda x: x["timestamp"], reverse=True)
+        
+        return {"success": True, "logs": logs[:lines]}
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error getting logs: {str(e)}")
@@ -338,7 +357,7 @@ async def get_user_activity(request: Request, days: int = 7):
         activity_data = []
         
         for i in range(days):
-            date = datetime.utcnow() - timedelta(days=i)
+            date = datetime.now() - timedelta(days=i)
             start_of_day = date.replace(hour=0, minute=0, second=0, microsecond=0)
             end_of_day = date.replace(hour=23, minute=59, second=59, microsecond=999999)
             

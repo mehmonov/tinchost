@@ -143,6 +143,7 @@ class AuthManager:
         if user and user.is_admin:
             return user
         
+
         admin_username = request.session.get('admin_username')
         if admin_username == config.ADMIN_USERNAME:
             admin_user = User(
@@ -150,6 +151,7 @@ class AuthManager:
                 email="admin@tinchost.uz",
             )
             return admin_user
+
         
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

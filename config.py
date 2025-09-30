@@ -20,7 +20,7 @@ class Config:
     
     MAX_FILE_SIZE = int(os.getenv("MAX_FILE_SIZE", "104857600"))
     UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "/tmp/tinchost_uploads")
-    SITES_FOLDER = os.getenv("SITES_FOLDER", "/var/www/sites")
+    SITES_FOLDER = os.getenv("SITES_FOLDER", "/media/storage/sws")
     
     NGINX_CONFIG_PATH = os.getenv("NGINX_CONFIG_PATH", "/etc/nginx/sites-available/tinchost")
     NGINX_ENABLED_PATH = os.getenv("NGINX_ENABLED_PATH", "/etc/nginx/sites-enabled/tinchost")

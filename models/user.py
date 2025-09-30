@@ -25,6 +25,7 @@ class User(Base):
     def delete(self) -> bool:  # type: ignore
         """Delete user from database"""
         try:
+
             # preferred this over super().delete()
             # since we can achieve two operations
             # in one session and also rollback safety.
@@ -50,6 +51,7 @@ class User(Base):
 
                 session.delete(self)
                 session.commit()
+
 
             return True
         except Exception as e:
@@ -95,6 +97,7 @@ class User(Base):
         except Exception as e:
             print(f"Error removing admin privileges: {e}")
             return False
+
 
     @classmethod
     def get_by_id(cls, user_id: int) -> Optional['User']:

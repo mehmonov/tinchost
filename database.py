@@ -19,7 +19,9 @@ class Database:
             from models.subdomain import Subdomain
             from models.admin import Admin
             Base.metadata.create_all(bind=self.engine)
+
         except Exception as e:
             print(f"Error initializing database: {e}")
 
 db = Database()
+

@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TincHost System Monitor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #02135e 0%, #5a10a3 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-left: 10px;
+        }
+
+        .status-healthy { background-color: #4CAF50; }
+        .status-warning { background-color: #FF9800; }
+        .status-error { background-color: #F44336; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .stat-title {
+            font-size: 0.9rem;
+            color: #666;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .progress-cpu { background: linear-gradient(90deg, #4CAF50, #FF9800); }
+        .progress-memory { background: linear-gradient(90deg, #2196F3, #9C27B0); }
+        .progress-disk { background: linear-gradient(90deg, #FF5722, #795548); }
+
+        .logs-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .logs-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .logs-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .connection-status {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .connected {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .disconnected {
+            background-color: #F44336;
+            color: white;
+        }
+
+        .logs-container {
+            background-color: #1e1e1e;
+            border-radius: 10px;
+            padding: 15px;
+            height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+
+        .log-entry {
+            color: #e0e0e0;
+            margin-bottom: 5px;
+            line-height: 1.4;
+        }
+
+        .log-timestamp {
+            color: #4CAF50;
+        }
+
+        .log-level-INFO { color: #2196F3; }
+        .log-level-WARNING { color: #FF9800; }
+        .log-level-ERROR { color: #F44336; }
+
+        .footer {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.8);
+            margin-top: 30px;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>TincHost System Monitor <span id="status-indicator" class="status-indicator status-healthy"></span></h1>
+            <p>Real-time tizim monitoring</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-title">CPU Ishlatilishi</div>
+                <div class="stat-value" id="cpu-value">0%</div>
+                <div class="progress-bar">
+                    <div class="progress-fill progress-cpu" id="cpu-progress"></div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-title">Xotira Ishlatilishi</div>
+                <div class="stat-value" id="memory-value">0%</div>
+                <div class="progress-bar">
+                    <div class="progress-fill progress-memory" id="memory-progress"></div>
+                </div>
+                <div style="font-size: 0.8rem; color: #666; margin-top: 5px;">
+                    <span id="memory-used">0</span> GB / <span id="memory-total">0</span> GB
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-title">Disk Ishlatilishi</div>
+                <div class="stat-value" id="disk-value">0%</div>
+                <div class="progress-bar">
+                    <div class="progress-fill progress-disk" id="disk-progress"></div>
+                </div>
+                <div style="font-size: 0.8rem; color: #666; margin-top: 5px;">
+                    <span id="disk-used">0</span> GB / <span id="disk-total">0</span> GB
+                </div>
+            </div>
+        </div>
+
+        <div class="logs-section">
+            <div class="logs-header">
+                <div class="logs-title">Tizim Loglari</div>
+                <div id="connection-status" class="connection-status disconnected">Ulanmoqda...</div>
+            </div>
+            <div class="logs-container" id="logs-container">
+                <div class="log-entry">Loglar yuklanmoqda...</div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>© 2024 TincHost - Real-time monitoring tizimi</p>
+            <p>Oxirgi yangilanish: <span id="last-update">-</span></p>
+        </div>
+    </div>
+
+    <script>
+        class SystemMonitor {
+            constructor() {
+                this.ws = null;
+                this.reconnectInterval = 5000;
+                this.connect();
+            }
+
+            connect() {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}/ws`;
+                
+                this.ws = new WebSocket(wsUrl);
+                
+                this.ws.onopen = () => {
+                    console.log('WebSocket connected');
+                    this.updateConnectionStatus(true);
+                };
+
+                this.ws.onmessage = (event) => {
+                    const message = JSON.parse(event.data);
+                    if (message.type === 'system_update') {
+                        this.updateStats(message.data.stats);
+                        this.updateLogs(message.data.logs);
+                    }
+                };
+
+                this.ws.onclose = () => {
+                    console.log('WebSocket disconnected');
+                    this.updateConnectionStatus(false);
+                    setTimeout(() => this.connect(), this.reconnectInterval);
+                };
+
+                this.ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                };
+            }
+
+            updateConnectionStatus(connected) {
+                const statusElement = document.getElementById('connection-status');
+                if (connected) {
+                    statusElement.textContent = 'Ulangan';
+                    statusElement.className = 'connection-status connected';
+                } else {
+                    statusElement.textContent = 'Uzilgan';
+                    statusElement.className = 'connection-status disconnected';
+                }
+            }
+
+            updateStats(stats) {
+                document.getElementById('cpu-value').textContent = `${stats.cpu_percent.toFixed(1)}%`;
+                document.getElementById('cpu-progress').style.width = `${stats.cpu_percent}%`;
+
+                document.getElementById('memory-value').textContent = `${stats.memory_percent.toFixed(1)}%`;
+                document.getElementById('memory-progress').style.width = `${stats.memory_percent}%`;
+                document.getElementById('memory-used').textContent = stats.memory_used;
+                document.getElementById('memory-total').textContent = stats.memory_total;
+
+                document.getElementById('disk-value').textContent = `${stats.disk_percent.toFixed(1)}%`;
+                document.getElementById('disk-progress').style.width = `${stats.disk_percent}%`;
+                document.getElementById('disk-used').textContent = stats.disk_used;
+                document.getElementById('disk-total').textContent = stats.disk_total;
+
+                const statusIndicator = document.getElementById('status-indicator');
+                statusIndicator.className = `status-indicator status-${stats.status}`;
+
+                document.getElementById('last-update').textContent = new Date(stats.timestamp).toLocaleString('uz-UZ');
+            }
+
+            updateLogs(logs) {
+                const container = document.getElementById('logs-container');
+                container.innerHTML = '';
+
+                logs.forEach(log => {
+                    if (log.trim()) {
+                        const logElement = document.createElement('div');
+                        logElement.className = 'log-entry';
+                        
+                        const parts = log.split(' - ');
+                        if (parts.length >= 3) {
+                            const timestamp = parts[0];
+                            const level = parts[1];
+                            const message = parts.slice(2).join(' - ');
+                            
+                            logElement.innerHTML = `
+                                <span class="log-timestamp">${timestamp}</span> - 
+                                <span class="log-level-${level}">${level}</span> - 
+                                ${message}
+                            `;
+                        } else {
+                            logElement.textContent = log;
+                        }
+                        
+                        container.appendChild(logElement);
+                    }
+                });
+
+                container.scrollTop = container.scrollHeight;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            new SystemMonitor();
+        });
+    </script>
+</body>
+</html>
