@@ -14,6 +14,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import (
     Mapped,
     mapped_column,
+    Session,
 )
 
 from models.base import Base
@@ -58,13 +59,21 @@ class Subdomain(Base):
             Conclusion:
                     Order matters. Choose first.
             """
-            super().delete(session)
+            # Use proper session context
+            if session is None:
+                with get_db().session() as session:
+                    session.delete(self)
+                    session.commit()
+            else:
+                session.delete(self)
+                session.commit()
+                
+            # Delete files after successful database deletion
             if self.file_path and os.path.exists(self.file_path):
                 shutil.rmtree(self.file_path)
 
             return True
         except Exception as e:
-            self.save() # resurrect the record
             print(f"Error deleting subdomain: {e}")
             return False
 
@@ -85,9 +94,18 @@ class Subdomain(Base):
             if os.path.exists(old_path):
                 os.rename(old_path, new_path)
 
-            self.subdomain_name = new_name
-            self.file_path = new_path
-            self.save()
+            # Use session context properly
+            with get_db().session() as session:
+                # Get the object in this session context
+                subdomain = session.get(Subdomain, self.id)
+                if subdomain:
+                    subdomain.subdomain_name = new_name
+                    subdomain.file_path = new_path
+                    session.commit()
+                    
+                    # Update current object attributes
+                    self.subdomain_name = new_name
+                    self.file_path = new_path
 
             return True
         except Exception as e:
