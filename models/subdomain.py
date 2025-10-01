@@ -1,7 +1,8 @@
+from __future__ import annotations
 import os
 import shutil
 from datetime import datetime
-from typing import Optional, List, Sequence
+from typing import Optional, Sequence
 from pathlib import Path
 from sqlalchemy import (
     String,
@@ -13,8 +14,6 @@ from sqlalchemy import (
 from sqlalchemy.orm import (
     Mapped,
     mapped_column,
-    relationship,
-    Session
 )
 
 from models.base import Base
@@ -43,19 +42,21 @@ class Subdomain(Base):
         try:
             """
             Order analysis:
-            Order:  self del
-                    file del
+            Order:  delete record = del_rec
+                    delete files = del_f
 
-                    if self del fails: no loss
-                    if file del fails: self resurrected and some file loss
+                    del_rec fails --> no loss
+                    del_f fails --> record restored and some file loss
                     otherwise success
 
-            Order:  file del
-                    self del
+            Order:  delete files = del_f
+                    delete record = del_rec
 
-                    if file fails: some file loss
-                    else if self fails: complete file loss
+                    del_f fails --> some file loss
+                    del_rec fails --> complete file loss
                     otherwise: success
+            Conclusion:
+                    Order matters. Choose first.
             """
             super().delete(session)
             if self.file_path and os.path.exists(self.file_path):
@@ -121,13 +122,13 @@ class Subdomain(Base):
         return file_count
 
     @classmethod
-    def get_by_id(cls, subdomain_id: int) -> Optional['Subdomain']:
+    def get_by_id(cls, subdomain_id: int) -> Subdomain | None:
         """Get subdomain by ID"""
         with get_db().session() as session:
             return session.get(Subdomain, subdomain_id)
 
     @classmethod
-    def get_by_name(cls, subdomain_name: str) -> Optional['Subdomain']:
+    def get_by_name(cls, subdomain_name: str) -> Subdomain | None:
         """Get subdomain by name"""
         with get_db().session() as session:
             return session.scalars(
@@ -136,7 +137,7 @@ class Subdomain(Base):
             ).one_or_none()
 
     @classmethod
-    def get_by_user_id(cls, user_id: int) -> Sequence['Subdomain']:
+    def get_by_user_id(cls, user_id: int) -> Sequence[Subdomain]:
         """Get all subdomains for a user"""
         with get_db().session() as session:
             return session.scalars(
@@ -146,7 +147,7 @@ class Subdomain(Base):
             ).all()
 
     @classmethod
-    def get_all(cls) -> Sequence['Subdomain']:
+    def get_all(cls) -> Sequence[Subdomain]:
         """Get all subdomains"""
         with get_db().session() as session:
             return session.scalars(

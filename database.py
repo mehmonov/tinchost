@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from config import config
 
 class Database:
-    def __init__(self, db_url: str | None = None):
+    def __init__(self, db_url: str | None = None) -> None:
         if db_url is None:
             db_url = config.DATABASE_URL
         self.db_url = db_url
@@ -12,12 +12,11 @@ class Database:
     def session(self) -> Session:
         return Session(self.engine)
     
-    def init_database(self):
+    def init_database(self) -> None:
         try:
             from models.base import Base
             from models.user import User
             from models.subdomain import Subdomain
-            from models.admin import Admin
             Base.metadata.create_all(bind=self.engine)
 
         except Exception as e:

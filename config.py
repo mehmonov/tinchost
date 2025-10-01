@@ -29,6 +29,7 @@ class Config:
     
     ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
     ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
+    ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "admin@tinchost.uz")
     
     @classmethod
     def create_directories(cls):
