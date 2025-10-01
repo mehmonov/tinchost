@@ -31,8 +31,6 @@ async def edit_subdomain(
     if not success:
         raise HTTPException(status_code=500, detail="Failed to update subdomain")
     
-    from utils.nginx_manager import NginxManager
-    NginxManager.reload_nginx()
     
     return JSONResponse({
         "success": True,
