@@ -13,4 +13,4 @@ jobs:
       run: |
         cd /home/husniddin/tinchost/
         git pull origin main
-        ./restart.sh
+        ./scripts/restart.sh
