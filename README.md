@@ -5,7 +5,7 @@
 
 
 
-TincHost - bu sizning HTML, CSS va JavaScript loyihalaringizni bir necha soniyada internetga chiqarish uchun yaratilgan oddiy va tezkor platforma. Faylni yuklang, havola oling va saytingiz tayyor!
+TincHost - bu HTML, CSS va JavaScript loyihalaringizni bir necha soniyada internetga chiqarish uchun yaratilgan oddiy va tezkor platforma. Faylni yuklang, havola oling va saytingiz tayyor!
 
 ## 🎯 Nima uchun TincHost?
 
@@ -266,15 +266,6 @@ sudo tail -f /var/log/nginx/error.log
 sudo journalctl -u cloudflared -f
 ```
 
-### Backup
-
-```bash
-# Avtomatik backup (crontab)
-./scripts/backup.sh
-
-# Qo'lda backup
-tar -czf backup-$(date +%Y%m%d).tar.gz /var/www/sites tinchost.db
-```
 
 ## 🛠️ Development
 
